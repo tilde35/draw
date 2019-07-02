@@ -1,0 +1,10 @@
+[package]
+name = "draw"
+version = "0.1.0"
+edition = "2018"
+authors = ["Tilde35 <github@granitewood.com>"]
+
+[dependencies]
+image = "0.21.2"
+rusttype = "0.7.7"
+unicode-normalization = "0.1.8"

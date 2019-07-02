@@ -1,0 +1,333 @@
+use crate::font::font_cache::FontCache;
+use crate::font::glyph::Glyph;
+use crate::font::rendered_text::{RenderedText, RenderedTextInstruction};
+use crate::blend::{ColorAlphaBlendMode, ColorBlendMode, ColorBlendOverwrite, ImageBlendMode};
+use crate::img::Image;
+use crate::rgba::Rgba;
+use crate::rows::{RowsIter, RowsMutIter};
+use std::cmp::{max, min};
+use crate::rect::Rect;
+
+pub struct Canvas<'a> {
+    img: &'a mut Image,
+    loc: [i32; 2],
+    dim: [u32; 2],
+    idx0: usize,
+    stride: usize,
+}
+impl<'a> Canvas<'a> {
+    pub(crate) fn new(img: &'a mut Image, idx0: usize, loc: [i32; 2], dim: [u32; 2]) -> Canvas<'a> {
+        let stride = img.stride();
+        Canvas {
+            img,
+            loc,
+            dim,
+            idx0,
+            stride,
+        }
+    }
+
+    /// Location of the top-left corner of this canvas using the coordinate space of the original image.
+    pub fn loc(&self) -> [i32; 2] {
+        self.loc
+    }
+    pub fn dim(&self) -> [u32; 2] {
+        self.dim
+    }
+    pub fn width(&self) -> u32 {
+        self.dim[0]
+    }
+    pub fn height(&self) -> u32 {
+        self.dim[1]
+    }
+
+    pub fn nth_row(&self, n: u32) -> &[Rgba] {
+        if n >= self.dim[1] {
+            panic!("Row does not exist");
+        } else {
+            let idx = self.idx0 + self.stride * (n as usize);
+            let end = idx + (self.dim[0] as usize);
+            &self.img.buffer()[idx..end]
+        }
+    }
+
+    pub fn nth_row_mut(&mut self, n: u32) -> &mut [Rgba] {
+        if n >= self.dim[1] {
+            panic!("Row does not exist");
+        } else {
+            let idx = self.idx0 + self.stride * (n as usize);
+            let end = idx + (self.dim[0] as usize);
+            &mut self.img.buffer_mut()[idx..end]
+        }
+    }
+
+    pub fn rows_iter<'b>(&'b self) -> RowsIter<'b> {
+        let idx0 = self.idx0;
+        let width = self.dim[0] as usize;
+        let stride = self.stride;
+        let max_idx = idx0 + (self.dim[1] as usize) * stride;
+        unsafe { RowsIter::unchecked_from_index(self.img.buffer(), idx0, width, stride, max_idx) }
+    }
+
+    pub fn rows_iter_mut<'b>(&'b mut self) -> RowsMutIter<'b> {
+        let idx0 = self.idx0;
+        let width = self.dim[0] as usize;
+        let stride = self.stride;
+        let max_idx = idx0 + (self.dim[1] as usize) * stride;
+        unsafe {
+            RowsMutIter::unchecked_from_index(self.img.buffer_mut(), idx0, width, stride, max_idx)
+        }
+    }
+
+    /// Returns a sub-section of this canvas that overlaps with the specified rectangle. The sub-canvas retains
+    /// the same coordinate space as original canvas. If there is no overlap, then None is returned.
+    pub fn sub_canvas<'b>(
+        &'b mut self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    ) -> Option<Canvas<'b>> {
+        let end_x = x + (width as i32);
+        let end_y = y + (height as i32);
+
+        let cur_start_x = self.loc[0];
+        let cur_start_y = self.loc[1];
+        let cur_end_x = cur_start_x + (self.dim[0] as i32);
+        let cur_end_y = cur_start_y + (self.dim[1] as i32);
+
+        let eff_start_x = max(x, cur_start_x);
+        let eff_start_y = max(y, cur_start_y);
+        let eff_end_x = min(end_x, cur_end_x);
+        let eff_end_y = min(end_y, cur_end_y);
+
+        if eff_start_x >= eff_end_x || eff_start_y >= eff_end_y {
+            // There is no overlap between the canvases
+            None
+        } else {
+            // Compute the dimensions
+            let width = (eff_end_x - eff_start_x) as u32;
+            let height = (eff_end_y - eff_start_y) as u32;
+
+            let stride = self.stride;
+
+            // Note: This will be valid since we know the current canvas only contained valid indexes
+            let idx0 = self.img.index_at([eff_start_x, eff_start_y]);
+
+            Some(Canvas {
+                img: self.img,
+                loc: [eff_start_x, eff_start_y],
+                dim: [width, height],
+                idx0: idx0,
+                stride: stride,
+            })
+        }
+    }
+
+    pub fn sub_canvas_rect<'b>(&'b mut self, rect: Rect) -> Option<Canvas<'b>> {
+        self.sub_canvas(rect.loc[0], rect.loc[1], rect.dim[0], rect.dim[1])
+    }
+
+    // Performs the same operation as sub_canvas, but takes ownership instead
+    pub fn into_sub_canvas(
+        mut self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    ) -> Option<Canvas<'a>> {
+        let (loc, dim, idx0) = if let Some(ss) = self.sub_canvas(x, y, width, height) {
+            (ss.loc, ss.dim, ss.idx0)
+        } else {
+            return None;
+        };
+
+        self.loc = loc;
+        self.dim = dim;
+        self.idx0 = idx0;
+        Some(self)
+    }
+
+    pub fn into_sub_canvas_rect(self, rect: Rect) -> Option<Canvas<'a>> {
+        self.into_sub_canvas(rect.loc[0], rect.loc[1], rect.dim[0], rect.dim[1])
+    }
+
+    fn try_index_at(&self, x: i32, y: i32) -> Option<usize> {
+        let (dx, dy) = (x - self.loc[0], y - self.loc[1]);
+        if (dx as u32) < self.dim[0] && (dy as u32) < self.dim[1] {
+            Some(self.idx0 + (dx as usize) + (dy as usize) * self.stride)
+        } else {
+            None
+        }
+    }
+
+    pub fn try_get_color(&self, x: i32, y: i32) -> Option<Rgba> {
+        if let Some(idx) = self.try_index_at(x, y) {
+            Some(self.img.get(idx))
+        } else {
+            None
+        }
+    }
+
+    pub fn try_get_color_mut(&mut self, x: i32, y: i32) -> Option<&mut Rgba> {
+        if let Some(idx) = self.try_index_at(x, y) {
+            Some(self.img.get_mut(idx))
+        } else {
+            None
+        }
+    }
+
+    pub fn try_set_color(&mut self, x: i32, y: i32, c: Rgba) -> bool {
+        if let Some(idx) = self.try_index_at(x, y) {
+            self.img.set(idx, c);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn try_blend_color<Mode: ColorBlendMode>(
+        &mut self,
+        mode: Mode,
+        x: i32,
+        y: i32,
+        c: Rgba,
+    ) -> bool {
+        if let Some(idx) = self.try_index_at(x, y) {
+            self.img.blend_using(mode, idx, c);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn clear(&mut self, c: Rgba) {
+        self.fill(ColorBlendOverwrite, c);
+    }
+
+    pub fn fill<Mode: ColorBlendMode>(&mut self, mode: Mode, c: Rgba) {
+        let cc = mode.prepare_color(c);
+        for row in self.rows_iter_mut() {
+            for pixel in row {
+                mode.blend_color(pixel, &cc);
+            }
+        }
+    }
+
+    pub fn draw_rect<Mode: ColorBlendMode>(
+        &mut self,
+        mode: Mode,
+        x: i32,
+        y: i32,
+        w: u32,
+        h: u32,
+        c: Rgba,
+    ) {
+        // TODO This is a slow implementation, make it fast
+        let x_end = x + (w as i32) - 1;
+        let y_end = y + (h as i32) - 1;
+        for rx in x..(x_end + 1) {
+            self.try_blend_color(mode, rx, y, c);
+            self.try_blend_color(mode, rx, y_end, c);
+        }
+        for ry in (y + 1)..y_end {
+            self.try_blend_color(mode, x, ry, c);
+            self.try_blend_color(mode, x_end, ry, c);
+        }
+    }
+
+    pub fn fill_rect<Mode: ColorBlendMode>(
+        &mut self,
+        mode: Mode,
+        x: i32,
+        y: i32,
+        w: u32,
+        h: u32,
+        c: Rgba,
+    ) {
+        if let Some(mut sr) = self.sub_canvas(x, y, w, h) {
+            sr.fill(mode, c);
+        }
+    }
+
+    pub fn draw_image<Mode: ImageBlendMode>(&mut self, mode: Mode, img: &Image, x: i32, y: i32) {
+        for src_y in 0..img.height() {
+            for src_x in 0..img.width() {
+                let src = img.get([src_x, src_y]);
+                if let Some(dst) = self.try_get_color_mut(x + (src_x as i32), y + (src_y as i32)) {
+                    mode.blend_color(dst, src);
+                }
+            }
+        }
+    }
+
+    pub fn draw_text<Mode: ColorAlphaBlendMode>(
+        &mut self,
+        mode: Mode,
+        font_cache: &mut FontCache,
+        font_size: f32,
+        font_color: Rgba,
+        txt: &str,
+        x: i32,
+        y: i32,
+        width: Option<u32>,
+    ) {
+        let line_advance_height = font_cache.line_advance_height(font_size);
+        let r = font_cache.render(txt, font_size, width);
+        self.draw_rendered_text(mode, &r, line_advance_height, font_color, x, y);
+    }
+
+    pub fn draw_rendered_text<'b, Mode: ColorAlphaBlendMode>(
+        &mut self,
+        mode: Mode,
+        r: &RenderedText<'b>,
+        _line_advance_height: u32,
+        font_color: Rgba,
+        x: i32,
+        y: i32,
+    ) {
+        let cc = mode.prepare_color(font_color);
+        let mut cur_x = x;
+        let mut cur_y = y;
+        for i in r.get_instructions() {
+            match *i {
+                RenderedTextInstruction::RenderGlyph(ref g) => {
+                    self.draw_glyph_alpha_xy(mode, g, &cc, cur_x, cur_y);
+                    cur_x += g.advance_width;
+                }
+                RenderedTextInstruction::Kerning(dx) => {
+                    cur_x += dx;
+                }
+                RenderedTextInstruction::NextLine(dy, ..) => {
+                    cur_y += dy as i32;
+                    cur_x = x;
+                }
+            }
+        }
+    }
+
+    fn draw_glyph_alpha_xy<Mode: ColorAlphaBlendMode>(
+        &mut self,
+        mode: Mode,
+        g: &Glyph,
+        color_ctxt: &Mode::ColorContext,
+        x: i32,
+        y: i32,
+    ) {
+        g.render_xy(
+            x,
+            y,
+            self,
+            |s, x, y| {
+                if let Some(dst) = s.try_get_color_mut(x, y) {
+                    mode.blend_solid_color(dst, color_ctxt);
+                }
+            },
+            |s, x, y, alpha| {
+                if let Some(dst) = s.try_get_color_mut(x, y) {
+                    mode.blend_color(dst, color_ctxt, alpha);
+                }
+            },
+        );
+    }
+}
