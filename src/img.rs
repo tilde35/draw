@@ -1,12 +1,10 @@
 use crate::blend::{ColorBlendMode, ColorBlendTransparent};
 use crate::canvas::Canvas;
+use crate::errors::ImageLoadError;
 use crate::idx::Indexable2D;
 use crate::rgba::Rgba;
 use crate::rows::{RowsIter, RowsMutIter};
 use crate::sub_img_params::SubImageParams;
-use image;
-use image::Pixel;
-use std;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Image {
@@ -14,17 +12,10 @@ pub struct Image {
     contents: Vec<Rgba>,
 }
 
-pub type ImageIoError = image::ImageError;
-pub type PistonImage = image::RgbaImage;
+impl From<image::RgbaImage> for Image {
+    fn from(image: image::RgbaImage) -> Self {
+        use image::Pixel;
 
-#[derive(Debug)]
-pub enum ImageSaveError {
-    IoError(std::io::Error),
-    ImageError(ImageIoError),
-}
-
-impl From<PistonImage> for Image {
-    fn from(image: PistonImage) -> Self {
         let d = image.dimensions();
         let d = [d.0, d.1];
         let len = (d[0] as usize) * (d[1] as usize);
@@ -41,7 +32,24 @@ impl From<PistonImage> for Image {
 }
 
 impl Image {
-    pub fn from_raw_rgba(width: u32, height: u32, raw: &[u8]) -> Image {
+    pub fn new(dim: [u32; 2]) -> Image {
+        Self::new_with_color(dim, Rgba([0, 0, 0, 0]))
+    }
+    pub fn new_with_color(dim: [u32; 2], bg: Rgba) -> Image {
+        let [width, height] = dim;
+        let len = (width as usize) * (height as usize);
+        let mut buf = Vec::with_capacity(len);
+        for _ in 0..len {
+            buf.push(bg);
+        }
+        Image {
+            dim: [width, height],
+            contents: buf,
+        }
+    }
+
+    pub fn from_raw_rgba_bytes(dim: [u32; 2], raw: &[u8]) -> Image {
+        let [width, height] = dim;
         let len = (width as usize) * (height as usize);
         if raw.len() != len * 4 {
             panic!(
@@ -66,30 +74,18 @@ impl Image {
             contents: buf,
         }
     }
-    pub fn new(dim: [u32; 2]) -> Image {
-        Self::new_with_color(dim, Rgba([0, 0, 0, 0]))
-    }
-    pub fn new_with_color(dim: [u32; 2], bg: Rgba) -> Image {
-        let [width, height] = dim;
-        let len = (width as usize) * (height as usize);
-        let mut buf = Vec::with_capacity(len);
-        for _ in 0..len {
-            buf.push(bg);
-        }
-        Image {
-            dim: [width, height],
-            contents: buf,
-        }
-    }
 
-    pub fn open(file: impl AsRef<std::path::Path>) -> Result<Image, ImageIoError> {
+    pub fn open(file: impl AsRef<std::path::Path>) -> Result<Image, ImageLoadError> {
         Ok(image::open(file)?.to_rgba().into())
     }
 
-    pub fn open_bytes(buffer: &[u8]) -> Result<Image, ImageIoError> {
+    pub fn open_bytes(buffer: &[u8]) -> Result<Image, ImageLoadError> {
         Ok(image::load_from_memory(buffer)?.to_rgba().into())
     }
 
+    /// Converts this image into linear color space (ex. what OpenGL uses). Since this is
+    /// a lossy transformation, it is best to use the built-in functions from the graphics
+    /// libraries instead (such as the SrgbTexture2d in glium).
     pub fn srgb_to_linear(&mut self) {
         for p in &mut self.contents {
             *p = p.srgb_to_linear();
@@ -140,7 +136,7 @@ impl Image {
     }
     pub fn set(&mut self, loc: impl Indexable2D, color: Rgba) {
         let idx = loc.as_index(self);
-        self.contents[idx]=color;
+        self.contents[idx] = color;
     }
     pub fn blend(&mut self, loc: impl Indexable2D, color: Rgba) {
         self.blend_using(ColorBlendTransparent, loc, color);
@@ -166,7 +162,7 @@ impl Image {
     }
     pub fn try_set(&mut self, loc: impl Indexable2D, color: Rgba) -> bool {
         if let Some(idx) = loc.try_as_index(self) {
-            self.contents[idx]=color;
+            self.contents[idx] = color;
             true
         } else {
             false
@@ -175,7 +171,12 @@ impl Image {
     pub fn try_blend(&mut self, loc: impl Indexable2D, color: Rgba) -> bool {
         self.try_blend_using(ColorBlendTransparent, loc, color)
     }
-    pub fn try_blend_using(&mut self, mode: impl ColorBlendMode, loc: impl Indexable2D, color: Rgba) -> bool {
+    pub fn try_blend_using(
+        &mut self,
+        mode: impl ColorBlendMode,
+        loc: impl Indexable2D,
+        color: Rgba,
+    ) -> bool {
         if let Some(idx) = loc.try_as_index(self) {
             let cc = mode.prepare_color(color);
             mode.blend_color(&mut self.contents[idx], &cc);
@@ -214,14 +215,14 @@ impl Image {
     }
 
     pub fn sub_image(&self, loc: impl Indexable2D, dim: [u32; 2]) -> Image {
-        let [w,h] = dim;
+        let [w, h] = dim;
         if w == 0 || h == 0 {
             panic!(
                 "Subimage width and height must be greater than zero (width={}, height={})",
                 w, h
             );
         }
-        let [x,y] = if let Some(loc) = loc.try_as_xy_loc(self) {
+        let [x, y] = if let Some(loc) = loc.try_as_xy_loc(self) {
             loc
         } else {
             panic!("{}", loc.out_of_bounds_text(self))
@@ -261,8 +262,8 @@ impl Image {
         result
     }
 
-    pub fn to_piston_image(&self) -> PistonImage {
-        let mut imgbuf: PistonImage = image::ImageBuffer::new(self.dim[0], self.dim[1]);
+    fn to_piston_image(&self) -> image::RgbaImage {
+        let mut imgbuf: image::RgbaImage = image::ImageBuffer::new(self.dim[0], self.dim[1]);
         for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
             // Note: Assuming the enumeration happens in standard order, then this could be a
             // simple index increment instead.
@@ -272,21 +273,23 @@ impl Image {
         imgbuf
     }
 
-    pub fn save(&self, file: impl AsRef<std::path::Path>) -> Result<(), ImageSaveError> {
-        self.to_piston_image()
-            .save(file)
-            .map_err(|e| ImageSaveError::IoError(e))?;
-        Ok(())
+    pub fn save(&self, file: impl AsRef<std::path::Path>) -> Result<(), std::io::Error> {
+        self.to_piston_image().save(file)
     }
 
     pub fn rows<'a>(&'a self) -> RowsIter<'a> {
-        RowsIter::new(self, 0, 0, self.dim)
+        RowsIter::new(self, [0, 0], self.dim)
     }
-    pub fn rows_at<'a>(&'a self, x: u32, y: u32, width: u32, height: u32) -> RowsIter<'a> {
-        RowsIter::new(self, x, y, [width, height])
+    pub fn rows_at<'a>(&'a self, loc: impl Indexable2D, dim: [u32; 2]) -> RowsIter<'a> {
+        let [x, y] = if let Some(loc) = loc.try_as_xy_loc(self) {
+            loc
+        } else {
+            panic!("{}", loc.out_of_bounds_text(self))
+        };
+        RowsIter::new(self, [x, y], dim)
     }
     pub fn rows_mut<'a>(&'a mut self) -> RowsMutIter<'a> {
-        RowsMutIter::new(self, 0, 0, self.dim)
+        RowsMutIter::new(self, [0, 0], self.dim)
     }
     pub fn rows_mut_at<'a>(
         &'a mut self,
@@ -295,7 +298,7 @@ impl Image {
         width: u32,
         height: u32,
     ) -> RowsMutIter<'a> {
-        RowsMutIter::new(self, x, y, [width, height])
+        RowsMutIter::new(self, [x, y], [width, height])
     }
 
     pub fn as_canvas<'a>(&'a mut self) -> Canvas<'a> {
@@ -304,33 +307,13 @@ impl Image {
     }
 
     /// Returns the raw data in RGBA format.
-    pub fn rgba_data(&self) -> &[u8] {
+    pub fn raw_rgba_bytes(&self) -> &[u8] {
         unsafe {
             // This is the dangerous part: Create a [u8] slice from the raw pointer.
             // It relies on Rgba to contain exactly four u8 values without any padding/extras.
             let u8_len = self.contents.len() * 4;
             let rgba_slice = &self.contents[0] as *const _ as *const u8;
             std::slice::from_raw_parts(rgba_slice, u8_len)
-        }
-    }
-
-    /// Creates a RawImage2d that owns its data. This is slower than glium_raw_image, but does not
-    /// have any borrowing concerns.
-    #[cfg(feature = "use-glium")]
-    pub fn glium_raw_image_owned(&self) -> glium::texture::RawImage2d<'static, u8> {
-        let mut data = Vec::new();
-        data.extend_from_slice(self.rgba_data());
-        glium::texture::RawImage2d::from_raw_rgba(data, self.dim)
-    }
-    /// Creates a RawImage2d that borrows the raw data. This is much faster than glium_raw_image_owned
-    /// and should be used if the image is to be immediately loaded into a texture.
-    #[cfg(feature = "use-glium")]
-    pub fn glium_raw_image<'raw>(&'raw self) -> glium::texture::RawImage2d<'raw, u8> {
-        glium::texture::RawImage2d {
-            data: std::borrow::Cow::Borrowed(self.rgba_data()),
-            width: self.dim[0],
-            height: self.dim[1],
-            format: glium::texture::ClientFormat::U8U8U8U8,
         }
     }
 }

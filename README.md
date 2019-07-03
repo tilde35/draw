@@ -31,9 +31,9 @@ img.save("output.png")?;
 
 ```rust
 // Create a new image given the specified rectangle within the original image
-let s = img.sub_image(10, 10, 16, 16); // x,y, w,h
+let s = img.sub_image([10, 10], [16, 16]); // [x,y], [w,h]
 
-let prms = SubImageParams::size(16, 16)
+let prms = SubImageParams::size([16, 16])
            .with_margin(4, 4, 4, 4)
            .with_spacing(1, 1);
 let sprites = img.sub_images(&prms);
@@ -43,62 +43,58 @@ let sprites = img.sub_images(&prms);
 
 ```rust
 let clear = Rgba([0, 0, 0, 0]);
-let red = Rgba::from_argb(0xff_ff0000);
-let blue = Rgba::parse("#00f").unwrap();
-let green = Rgba::from_u8(0, 255, 0, 255);
-let gray = Rgba::from_f32(0.5, 0.5, 0.5, 1.0);
+let red = Rgba::from_argb_u32(0xff_ff0000);
+let blue: Rgba = "#00f".parse().unwrap();
+let gray = Rgba::from_f32([0.5, 0.5, 0.5, 1.0]);
 
-let (r, g, b, a) = red.rgba_f32();
-let (r, g, b) = red.rgb_f32();
+let [r, g, b, a] = red.rgba_f32();
+let [r, g, b] = red.rgb_f32();
 let red_u32 = red.to_rgba_u32(); // Use Rgba::from_argb to get it back
 ```
 
 ## Canvas ##
 
 ```rust
-let mut s = img.as_canvas();
+let mut c = img.as_canvas();
 
-s.clear(Rgba([0,0,0,0]));
-s.fill(ColorBlendOpaque, Rgba([80,80,80,128]));
+c.clear(Rgba([0, 0, 0, 255]));
+c.fill(Rgba([80, 80, 80, 128]));
 
-if let Some(mut ss) = s.sub_canvas(-4, -8, 16, 16) {
+if let Some(mut sc) = c.sub_canvas([-4, -8], [16, 16]) {
     // Note: Location and dimensions are adjusted based on
     // available space.
-    assert!(ss.loc() == [0, 0]);
-    assert!(ss.dim() == [12, 8]);
+    assert!(sc.loc() == [0, 0]);
+    assert!(sc.dim() == [12, 8]);
 
-    let its_gone = ss.into_sub_canvas(40, 40, 8, 8);
+    let its_gone = sc.into_sub_canvas([40, 40], [8, 8]);
 }
 
-s.draw_rect(ColorBlendOpaque, 3, 3, 400, 200, Rgba([40,0,0,80]));
+c.draw_rect([3, 3], [400, 200], Rgba([40, 0, 0, 80]));
 
-s.fill_rect(ColorBlendOpaque, 3, 3, 400, 200, Rgba([40,0,0,80]));
+c.fill_rect([3, 3], [400, 200], Rgba([40, 0, 0, 80]));
 
-s.draw_image(ImageBlendOpaque, &sprite_img, 10, 10);
+c.draw_image(&sprite_img, [10, 10]);
 
-s.draw_text(
-    ColorAlphaBlendOpaque, // Blending mode
+let mut font = FontCache::from_static(include_bytes!("Arial.ttf")).unwrap();
+
+c.draw_text(
     &mut font,             // Font
     24.0,                  // Font size
     Rgba([0, 0, 0, 255]),  // Font color
     "Example text",        // Text
-    10,                    // X position
-    10,                    // Y position
+    [10, 10],              // Position
     Some(200)              // Width (for text wrapping)
 );
 
-let r = font.render_text("Example", 24.0, Some(200));
-s.draw_rendered_text(
-    ColorAlphaBlendOpaque,
-    &r,
-    font.line_advance_height(24.0),
-    Rgba([0, 0, 0, 255]),
-    10,
-    10
-);
+let r = font.render("Example", 24.0, Some(200));
+c.draw_rendered_text(&r, Rgba([0, 0, 0, 255]), [10, 10]);
 ```
 
 ## Blend Modes ##
+
+By default, the draw operations will use the blending that will work in all circumstances (may not be the fastest).
+If a faster performing blend strategy is required, then the `_using` version of the method may be called and the
+appropriate blend strategy specified.
 
 ### ColorBlendMode ###
 
@@ -130,32 +126,58 @@ Used when working with a combination of colors (such as with images).
 ## GLIUM ##
 
 ```rust
-let raw = glium::texture::RawImage2d {
-    data: std::borrow::Cow::Borrowed(img.rgba_data()),
-    width: img.dimensions().0,
-    height: img.dimensions().1,
-    format: glium::texture::ClientFormat::U8U8U8U8,
+let img_tx = {
+    let img = Image::open("my_file.png").unwrap();
+
+    let raw = glium::texture::RawImage2d {
+        data: std::borrow::Cow::Borrowed(img.rgba_data()),
+        width: img.width(),
+        height: img.height(),
+        format: glium::texture::ClientFormat::U8U8U8U8,
+    };
+    glium::texture::SrgbTexture2d::new(&display, raw).unwrap()
+};
+
+let img_tx_array = {
+    let img = Image::open("my_file.png").unwrap();
+
+    let p = SubImageParams::size([128, 128]).with_margin(1, 1, 1, 1).with_spacing(1, 1);
+
+    let sub_imgs = img.sub_images(&p);
+
+    let mut raw_entries = Vec::new();
+    for i in sub_imgs.iter() {
+        let raw = glium::texture::RawImage2d {
+            data: std::borrow::Cow::Borrowed(i.rgba_data()),
+            width: i.width(),
+            height: i.height(),
+            format: glium::texture::ClientFormat::U8U8U8U8,
+        };
+        raw_entries.push(raw);
+    }
+
+    glium::texture::SrgbTexture2dArray::new(&display, raw_entries).unwrap()
 };
 ```
 
 ## Fonts ##
 
 ```rust
-let font = FontCache::from_static(include_bytes!("Arial.ttf"));
-let font = FontCache::from_slice(bytes);
-let font = FontCache::from_vec(bytes);
+let font = FontCache::from_static(include_bytes!("Arial.ttf")).unwrap();
+let font = FontCache::from_slice(bytes).unwrap();
+let font = FontCache::from_vec(bytes).unwrap();
 let font = FontCache::from_font(rusttype_font);
 
 let font_size = 24.0;
 let line_height = font.line_advance_height(font_size);
 let r = font.render("Example", font_size, Some(200));
-let r = font.cache_only_render("Example", font_size, Some(200));
+let r = font.cache_only_render("Example", font_size, Some(200)).unwrap();
 
 let width = r.get_total_width();
 let height = r.get_total_height();
 let (mut x, mut y) = (0, 0);
 for i in r.get_instructions() {
-    match i {
+    match *i {
         RenderedTextInstruction::RenderGlyph(g) => {
             g.render_xy(
                 x,
@@ -174,7 +196,8 @@ for i in r.get_instructions() {
             x += dx;
         }
         RenderedTextInstruction::NextLine(dy, _reason) => {
-            y += dy;
+            x = 0;
+            y += dy as i32;
         }
     }
 }

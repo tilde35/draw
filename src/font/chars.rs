@@ -1,4 +1,3 @@
-use std;
 use unicode_normalization::{Recompositions, UnicodeNormalization};
 
 pub trait RenderableCharacters: Copy {

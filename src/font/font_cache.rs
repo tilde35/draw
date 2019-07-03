@@ -6,8 +6,6 @@ use crate::font::scaled_glyph_cache::ScaledFontCache;
 use crate::img::Image;
 use crate::rgba::Rgba;
 use rusttype::{point, Font, FontCollection, Scale};
-use rusttype;
-use std;
 use std::cmp::max;
 use std::collections::HashMap;
 
@@ -83,7 +81,7 @@ impl FontCache {
     pub fn chars_to_text<'b>(&'b mut self, chars: &RenderedChars, size: f32) -> RenderedText<'b> {
         unsafe {
             // Current lifetime limitations cause the cache_only_render to stay alive for the entire function
-            // The unsafe code may be removed in the future
+            // The unsafe code may be removed in the future (note: still not working as of Rust 1.35)
             let ptr = self as *mut Self;
             if let Some(r) = (*ptr).cache_only_chars_to_text(chars, size) {
                 return r;
@@ -132,7 +130,7 @@ impl FontCache {
     {
         unsafe {
             // Current lifetime limitations cause the cache_only_render to stay alive for the entire function
-            // The unsafe code may be removed in the future
+            // The unsafe code may be removed in the future (note: still not working as of Rust 1.35)
             let ptr = self as *mut Self;
             if let Some(r) = (*ptr).cache_only_render(txt, size, width) {
                 return r;
@@ -285,7 +283,7 @@ impl FontCache {
                     let (width, height) = (bb.width() as u32, bb.height() as u32);
                     let mut img = Image::new([width, height]);
                     pos_glyph.draw(|x, y, v| {
-                        img.set([x, y], Rgba::from_f32(0., 0., 0., v));
+                        img.set([x, y], Rgba::from_f32([0., 0., 0., v]));
                     });
 
                     // Note: Some letters have negative offsets - we are ignoring this

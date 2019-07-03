@@ -1,4 +1,4 @@
-use std;
+use crate::errors::RgbaParseError;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Rgba(pub [u8; 4]);
@@ -19,19 +19,7 @@ fn f32_to_u8(v: f32) -> u8 {
     }
 }
 
-fn f64_to_u8(v: f64) -> u8 {
-    let u8v = v * 255.0;
-
-    if u8v < 0.0 {
-        0
-    } else if u8v >= 255.0 {
-        255
-    } else {
-        u8v as u32 as u8
-    }
-}
-
-fn srgb_to_linear(v: f64) -> f64 {
+fn srgb_to_linear(v: f32) -> f32 {
     // From http://entropymine.com/imageworsener/srgbformula/
     // Converts sRGB to linear
     if v <= 0.04045 {
@@ -41,25 +29,10 @@ fn srgb_to_linear(v: f64) -> f64 {
     }
 }
 
-impl Rgba {
-    pub fn from_f32(r: f32, g: f32, b: f32, a: f32) -> Rgba {
-        Rgba([f32_to_u8(r), f32_to_u8(g), f32_to_u8(b), f32_to_u8(a)])
-    }
-    pub fn from_u8(r: u8, g: u8, b: u8, a: u8) -> Rgba {
-        Rgba([r, g, b, a])
-    }
-    pub fn from_argb(argb: u32) -> Rgba {
-        let b = (argb & 0xff) as u8;
-        let g = ((argb >> 8) & 0xff) as u8;
-        let r = ((argb >> 16) & 0xff) as u8;
-        let a = ((argb >> 24) & 0xff) as u8;
-        Self::from_u8(r, g, b, a)
-    }
-    pub fn from_rgba_native(argb: u32) -> Rgba {
-        let c = unsafe { std::mem::transmute::<u32, [u8; 4]>(argb) };
-        Rgba(c)
-    }
-    pub fn parse(s: &str) -> Result<Rgba, &'static str> {
+impl std::str::FromStr for Rgba {
+    type Err = RgbaParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         use std::u32;
         if s[..1] == *"#" {
             if let Ok(mut c) = u32::from_str_radix(&s[1..], 16) {
@@ -68,29 +41,59 @@ impl Rgba {
                     let b = (c & 0xf) as u8;
                     let g = ((c >> 4) & 0xf) as u8;
                     let r = ((c >> 8) & 0xf) as u8;
-                    return Ok(Rgba::from_u8(r | (r << 4), g | (g << 4), b | (b << 4), 0xff));
+                    return Ok(Rgba([r | (r << 4), g | (g << 4), b | (b << 4), 0xff]));
                 }
                 if s.len() == 1 + 6 {
                     // No alpha specified, assume it is solid
                     c |= 0xff000000;
                 }
-                Ok(Rgba::from_argb(c))
+                Ok(Rgba::from_argb_u32(c))
             } else {
-                Err("Invalid RGBA hex code")
+                Err(RgbaParseError::hex_parse(s))
             }
         } else {
-            Err("Unrecognized RGBA color type")
+            Err(RgbaParseError::unrecognized(s))
         }
+    }
+}
+
+impl Rgba {
+    pub fn from_f32(rgba: [f32; 4]) -> Rgba {
+        let [r, g, b, a] = rgba;
+        Rgba([f32_to_u8(r), f32_to_u8(g), f32_to_u8(b), f32_to_u8(a)])
+    }
+    pub fn from_argb_u32(argb: u32) -> Rgba {
+        let argb = argb.to_le_bytes();
+        Rgba([argb[2], argb[1], argb[0], argb[3]])
+    }
+    pub fn from_rgba_u32(rgba: u32) -> Rgba {
+        Rgba(rgba.to_be_bytes())
+    }
+    pub fn from_le_u32(v: u32) -> Rgba {
+        Rgba(v.to_le_bytes())
     }
 
     pub fn srgb_to_linear(&self) -> Rgba {
         let c = self.0;
 
-        let cf = (c[0] as f64 / 255.0, c[1] as f64 / 255.0, c[2] as f64 / 255.0);
+        let cf = [
+            srgb_to_linear((c[0] as f32) / 255.0),
+            srgb_to_linear((c[1] as f32) / 255.0),
+            srgb_to_linear((c[2] as f32) / 255.0),
+        ];
 
-        let cf = (srgb_to_linear(cf.0), srgb_to_linear(cf.1), srgb_to_linear(cf.2));
+        Rgba([f32_to_u8(cf[0]), f32_to_u8(cf[1]), f32_to_u8(cf[2]), c[3]])
+    }
 
-        Rgba([f64_to_u8(cf.0), f64_to_u8(cf.1), f64_to_u8(cf.2), c[3]])
+    pub fn srgb_to_linear_f32(&self) -> [f32; 4] {
+        let c = self.0;
+
+        [
+            srgb_to_linear((c[0] as f32) / 255.0),
+            srgb_to_linear((c[1] as f32) / 255.0),
+            srgb_to_linear((c[2] as f32) / 255.0),
+            (c[3] as f32) / 255.0,
+        ]
     }
 
     pub fn with_alpha(&self, alpha: u8) -> Rgba {
@@ -112,20 +115,23 @@ impl Rgba {
     }
 
     pub fn to_argb_u32(&self) -> u32 {
-        ((self.alpha() as u32) << 24) | ((self.red() as u32) << 16) | ((self.green() as u32) << 8) | (self.blue() as u32)
+        let [r, g, b, a] = self.0;
+        u32::from_le_bytes([b, g, r, a])
     }
-    pub fn to_rgba_u32_native(&self) -> u32 {
-        let c = self.0;
-        unsafe { std::mem::transmute::<[u8; 4], u32>(c) }
+    pub fn to_rgba_u32(&self) -> u32 {
+        let [r, g, b, a] = self.0;
+        u32::from_le_bytes([a, b, g, r])
+    }
+    pub fn to_le_u32(&self) -> u32 {
+        u32::from_le_bytes(self.0)
     }
 
-    pub fn rgba(&self) -> (u8, u8, u8, u8) {
-        let c = self.0;
-        (c[0], c[1], c[2], c[3])
+    pub fn rgba(&self) -> [u8; 4] {
+        self.0
     }
-    pub fn rgb(&self) -> (u8, u8, u8) {
+    pub fn rgb(&self) -> [u8; 3] {
         let c = self.0;
-        (c[0], c[1], c[2])
+        [c[0], c[1], c[2]]
     }
     pub fn red(&self) -> u8 {
         self.0[0]
@@ -151,13 +157,18 @@ impl Rgba {
     pub fn set_alpha(&mut self, v: u8) {
         self.0[3] = v;
     }
-    pub fn rgba_f32(&self) -> (f32, f32, f32, f32) {
+    pub fn rgba_f32(&self) -> [f32; 4] {
         let c = self.0;
-        (u8_to_f32(c[0]), u8_to_f32(c[1]), u8_to_f32(c[2]), u8_to_f32(c[3]))
+        [
+            u8_to_f32(c[0]),
+            u8_to_f32(c[1]),
+            u8_to_f32(c[2]),
+            u8_to_f32(c[3]),
+        ]
     }
-    pub fn rgb_f32(&self) -> (f32, f32, f32) {
+    pub fn rgb_f32(&self) -> [f32; 3] {
         let c = self.0;
-        (u8_to_f32(c[0]), u8_to_f32(c[1]), u8_to_f32(c[2]))
+        [u8_to_f32(c[0]), u8_to_f32(c[1]), u8_to_f32(c[2])]
     }
     pub fn red_f32(&self) -> f32 {
         u8_to_f32(self.0[0])

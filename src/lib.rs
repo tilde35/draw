@@ -1,5 +1,6 @@
 mod blend;
 mod canvas;
+mod errors;
 mod font;
 mod idx;
 mod img;
@@ -13,6 +14,7 @@ pub use crate::blend::{ColorAlphaBlendOpaque, ColorAlphaBlendOverwrite, ColorAlp
 pub use crate::blend::{ColorBlendOpaque, ColorBlendOverwrite, ColorBlendTransparent};
 pub use crate::blend::{ImageBlendOpaque, ImageBlendOverwrite, ImageBlendTransparent};
 pub use crate::canvas::Canvas;
+pub use crate::errors::{ImageLoadError, RgbaParseError};
 pub use crate::font::chars::{RenderableCharacters, SliceCharIter};
 pub use crate::font::font_cache::FontCache;
 pub use crate::font::glyph::{Glyph, GlyphInstruction};
@@ -20,7 +22,7 @@ pub use crate::font::glyph_builder::GlyphInstructionBuilder;
 pub use crate::font::rendered_text::{NextLineReason, RenderedCharInstruction, RenderedChars, RenderedText, RenderedTextInstruction};
 pub use crate::font::scaled_glyph_cache::ScaledFontCache;
 pub use crate::idx::Indexable2D;
-pub use crate::img::{Image, ImageIoError, ImageSaveError, PistonImage};
+pub use crate::img::Image;
 pub use crate::rect::Rect;
 pub use crate::rgba::Rgba;
 pub use crate::rows::{RowsIter, RowsMutIter};

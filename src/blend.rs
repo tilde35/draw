@@ -29,8 +29,8 @@ pub trait ImageBlendMode: Copy {
 // ===================== Helper Functions =====================
 
 fn alpha_blend(base: &mut Rgba, color: Rgba) {
-    let (r_below, g_below, b_below, a_below) = base.rgba_f32();
-    let (r_above, g_above, b_above, a_above) = color.rgba_f32();
+    let [r_below, g_below, b_below, a_below] = base.rgba_f32();
+    let [r_above, g_above, b_above, a_above] = color.rgba_f32();
 
     let (ratio_below, ratio_above) = {
         let tmp_below = (1.0 - a_above) * a_below;
@@ -48,15 +48,15 @@ fn alpha_blend(base: &mut Rgba, color: Rgba) {
     // From: https://stackoverflow.com/questions/3658804/formula-for-alpha-value-when-blending-two-transparent-colors
     let a = a_below + (1.0 - a_below) * a_above;
 
-    *base = Rgba::from_f32(r, g, b, a);
+    *base = Rgba::from_f32([r, g, b, a]);
 }
 
 fn fast_alpha_blend_opaque(base: &mut Rgba, color: Rgba) {
-    let (r1, g1, b1, a1) = color.rgba();
-    let (r1, g1, b1, a1) = (r1 as i32, g1 as i32, b1 as i32, a1 as i32);
+    let [r1, g1, b1, a1] = color.rgba();
+    let [r1, g1, b1, a1] = [r1 as i32, g1 as i32, b1 as i32, a1 as i32];
 
-    let (r2, g2, b2) = base.rgb();
-    let (r2, g2, b2) = (r2 as i32, g2 as i32, b2 as i32);
+    let [r2, g2, b2] = base.rgb();
+    let [r2, g2, b2] = [r2 as i32, g2 as i32, b2 as i32];
 
     let r3 = fast_alpha_blend_opaque_calc(a1, r1, r2);
     let g3 = fast_alpha_blend_opaque_calc(a1, g1, g2);

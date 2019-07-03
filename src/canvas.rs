@@ -1,12 +1,15 @@
+use crate::blend::{
+    ColorAlphaBlendMode, ColorAlphaBlendTransparent, ColorBlendMode, ColorBlendOverwrite,
+    ColorBlendTransparent, ImageBlendMode, ImageBlendTransparent,
+};
 use crate::font::font_cache::FontCache;
 use crate::font::glyph::Glyph;
 use crate::font::rendered_text::{RenderedText, RenderedTextInstruction};
-use crate::blend::{ColorAlphaBlendMode, ColorBlendMode, ColorBlendOverwrite, ImageBlendMode};
 use crate::img::Image;
+use crate::rect::Rect;
 use crate::rgba::Rgba;
 use crate::rows::{RowsIter, RowsMutIter};
 use std::cmp::{max, min};
-use crate::rect::Rect;
 
 pub struct Canvas<'a> {
     img: &'a mut Image,
@@ -81,13 +84,10 @@ impl<'a> Canvas<'a> {
 
     /// Returns a sub-section of this canvas that overlaps with the specified rectangle. The sub-canvas retains
     /// the same coordinate space as original canvas. If there is no overlap, then None is returned.
-    pub fn sub_canvas<'b>(
-        &'b mut self,
-        x: i32,
-        y: i32,
-        width: u32,
-        height: u32,
-    ) -> Option<Canvas<'b>> {
+    pub fn sub_canvas<'b>(&'b mut self, loc: [i32; 2], dim: [u32; 2]) -> Option<Canvas<'b>> {
+        let [x, y] = loc;
+        let [width, height] = dim;
+
         let end_x = x + (width as i32);
         let end_y = y + (height as i32);
 
@@ -125,18 +125,12 @@ impl<'a> Canvas<'a> {
     }
 
     pub fn sub_canvas_rect<'b>(&'b mut self, rect: Rect) -> Option<Canvas<'b>> {
-        self.sub_canvas(rect.loc[0], rect.loc[1], rect.dim[0], rect.dim[1])
+        self.sub_canvas(rect.loc, rect.dim)
     }
 
     // Performs the same operation as sub_canvas, but takes ownership instead
-    pub fn into_sub_canvas(
-        mut self,
-        x: i32,
-        y: i32,
-        width: u32,
-        height: u32,
-    ) -> Option<Canvas<'a>> {
-        let (loc, dim, idx0) = if let Some(ss) = self.sub_canvas(x, y, width, height) {
+    pub fn into_sub_canvas(mut self, loc: [i32; 2], dim: [u32; 2]) -> Option<Canvas<'a>> {
+        let (loc, dim, idx0) = if let Some(ss) = self.sub_canvas(loc, dim) {
             (ss.loc, ss.dim, ss.idx0)
         } else {
             return None;
@@ -149,10 +143,11 @@ impl<'a> Canvas<'a> {
     }
 
     pub fn into_sub_canvas_rect(self, rect: Rect) -> Option<Canvas<'a>> {
-        self.into_sub_canvas(rect.loc[0], rect.loc[1], rect.dim[0], rect.dim[1])
+        self.into_sub_canvas(rect.loc, rect.dim)
     }
 
-    fn try_index_at(&self, x: i32, y: i32) -> Option<usize> {
+    fn try_index_at(&self, loc: [i32; 2]) -> Option<usize> {
+        let [x, y] = loc;
         let (dx, dy) = (x - self.loc[0], y - self.loc[1]);
         if (dx as u32) < self.dim[0] && (dy as u32) < self.dim[1] {
             Some(self.idx0 + (dx as usize) + (dy as usize) * self.stride)
@@ -161,24 +156,24 @@ impl<'a> Canvas<'a> {
         }
     }
 
-    pub fn try_get_color(&self, x: i32, y: i32) -> Option<Rgba> {
-        if let Some(idx) = self.try_index_at(x, y) {
+    pub fn try_get_color(&self, loc: [i32; 2]) -> Option<Rgba> {
+        if let Some(idx) = self.try_index_at(loc) {
             Some(self.img.get(idx))
         } else {
             None
         }
     }
 
-    pub fn try_get_color_mut(&mut self, x: i32, y: i32) -> Option<&mut Rgba> {
-        if let Some(idx) = self.try_index_at(x, y) {
+    pub fn try_get_color_mut(&mut self, loc: [i32; 2]) -> Option<&mut Rgba> {
+        if let Some(idx) = self.try_index_at(loc) {
             Some(self.img.get_mut(idx))
         } else {
             None
         }
     }
 
-    pub fn try_set_color(&mut self, x: i32, y: i32, c: Rgba) -> bool {
-        if let Some(idx) = self.try_index_at(x, y) {
+    pub fn try_set_color(&mut self, loc: [i32; 2], c: Rgba) -> bool {
+        if let Some(idx) = self.try_index_at(loc) {
             self.img.set(idx, c);
             true
         } else {
@@ -186,14 +181,17 @@ impl<'a> Canvas<'a> {
         }
     }
 
-    pub fn try_blend_color<Mode: ColorBlendMode>(
+    pub fn try_blend_color(&mut self, loc: [i32; 2], c: Rgba) -> bool {
+        self.try_blend_color_using(ColorBlendTransparent, loc, c)
+    }
+
+    pub fn try_blend_color_using<Mode: ColorBlendMode>(
         &mut self,
         mode: Mode,
-        x: i32,
-        y: i32,
+        loc: [i32; 2],
         c: Rgba,
     ) -> bool {
-        if let Some(idx) = self.try_index_at(x, y) {
+        if let Some(idx) = self.try_index_at(loc) {
             self.img.blend_using(mode, idx, c);
             true
         } else {
@@ -202,10 +200,18 @@ impl<'a> Canvas<'a> {
     }
 
     pub fn clear(&mut self, c: Rgba) {
-        self.fill(ColorBlendOverwrite, c);
+        self.fill_using(ColorBlendOverwrite, c);
     }
 
-    pub fn fill<Mode: ColorBlendMode>(&mut self, mode: Mode, c: Rgba) {
+    pub fn fill(&mut self, c: Rgba) {
+        if c.alpha() == 255 {
+            self.fill_using(ColorBlendOverwrite, c);
+        } else {
+            self.fill_using(ColorBlendTransparent, c);
+        }
+    }
+
+    pub fn fill_using<Mode: ColorBlendMode>(&mut self, mode: Mode, c: Rgba) {
         let cc = mode.prepare_color(c);
         for row in self.rows_iter_mut() {
             for pixel in row {
@@ -214,85 +220,132 @@ impl<'a> Canvas<'a> {
         }
     }
 
-    pub fn draw_rect<Mode: ColorBlendMode>(
+    pub fn draw_rect(&mut self, loc: [i32; 2], dim: [u32; 2], c: Rgba) {
+        if c.alpha() == 255 {
+            // Fully opaque color, overwrite existing content
+            self.draw_rect_using(ColorBlendOverwrite, loc, dim, c);
+        } else {
+            // Use transparent blending
+            self.draw_rect_using(ColorBlendTransparent, loc, dim, c);
+        }
+    }
+
+    pub fn draw_rect_using<Mode: ColorBlendMode>(
         &mut self,
         mode: Mode,
-        x: i32,
-        y: i32,
-        w: u32,
-        h: u32,
+        loc: [i32; 2],
+        dim: [u32; 2],
         c: Rgba,
     ) {
+        let [x, y] = loc;
+        let [w, h] = dim;
         // TODO This is a slow implementation, make it fast
         let x_end = x + (w as i32) - 1;
         let y_end = y + (h as i32) - 1;
         for rx in x..(x_end + 1) {
-            self.try_blend_color(mode, rx, y, c);
-            self.try_blend_color(mode, rx, y_end, c);
+            self.try_blend_color_using(mode, [rx, y], c);
+            self.try_blend_color_using(mode, [rx, y_end], c);
         }
         for ry in (y + 1)..y_end {
-            self.try_blend_color(mode, x, ry, c);
-            self.try_blend_color(mode, x_end, ry, c);
+            self.try_blend_color_using(mode, [x, ry], c);
+            self.try_blend_color_using(mode, [x_end, ry], c);
         }
     }
 
-    pub fn fill_rect<Mode: ColorBlendMode>(
+    pub fn fill_rect(&mut self, loc: [i32; 2], dim: [u32; 2], c: Rgba) {
+        if c.alpha() == 255 {
+            self.fill_rect_using(ColorBlendOverwrite, loc, dim, c);
+        } else {
+            self.fill_rect_using(ColorBlendTransparent, loc, dim, c);
+        }
+    }
+
+    pub fn fill_rect_using<Mode: ColorBlendMode>(
         &mut self,
         mode: Mode,
-        x: i32,
-        y: i32,
-        w: u32,
-        h: u32,
+        loc: [i32; 2],
+        dim: [u32; 2],
         c: Rgba,
     ) {
-        if let Some(mut sr) = self.sub_canvas(x, y, w, h) {
-            sr.fill(mode, c);
+        if let Some(mut sr) = self.sub_canvas(loc, dim) {
+            sr.fill_using(mode, c);
         }
     }
 
-    pub fn draw_image<Mode: ImageBlendMode>(&mut self, mode: Mode, img: &Image, x: i32, y: i32) {
+    pub fn draw_image(&mut self, img: &Image, loc: [i32; 2]) {
+        self.draw_image_using(ImageBlendTransparent, img, loc)
+    }
+
+    pub fn draw_image_using<Mode: ImageBlendMode>(
+        &mut self,
+        mode: Mode,
+        img: &Image,
+        loc: [i32; 2],
+    ) {
+        let [x, y] = loc;
         for src_y in 0..img.height() {
             for src_x in 0..img.width() {
                 let src = img.get([src_x, src_y]);
-                if let Some(dst) = self.try_get_color_mut(x + (src_x as i32), y + (src_y as i32)) {
+                if let Some(dst) = self.try_get_color_mut([x + (src_x as i32), y + (src_y as i32)])
+                {
                     mode.blend_color(dst, src);
                 }
             }
         }
     }
 
-    pub fn draw_text<Mode: ColorAlphaBlendMode>(
+    pub fn draw_text(
+        &mut self,
+        font_cache: &mut FontCache,
+        font_size: f32,
+        font_color: Rgba,
+        txt: &str,
+        loc: [i32; 2],
+        width: Option<u32>,
+    ) {
+        self.draw_text_using(
+            ColorAlphaBlendTransparent,
+            font_cache,
+            font_size,
+            font_color,
+            txt,
+            loc,
+            width,
+        );
+    }
+
+    pub fn draw_text_using<Mode: ColorAlphaBlendMode>(
         &mut self,
         mode: Mode,
         font_cache: &mut FontCache,
         font_size: f32,
         font_color: Rgba,
         txt: &str,
-        x: i32,
-        y: i32,
+        loc: [i32; 2],
         width: Option<u32>,
     ) {
-        let line_advance_height = font_cache.line_advance_height(font_size);
         let r = font_cache.render(txt, font_size, width);
-        self.draw_rendered_text(mode, &r, line_advance_height, font_color, x, y);
+        self.draw_rendered_text_using(mode, &r, font_color, loc);
     }
 
-    pub fn draw_rendered_text<'b, Mode: ColorAlphaBlendMode>(
+    pub fn draw_rendered_text(&mut self, r: &RenderedText, font_color: Rgba, loc: [i32; 2]) {
+        self.draw_rendered_text_using(ColorAlphaBlendTransparent, r, font_color, loc)
+    }
+
+    pub fn draw_rendered_text_using<Mode: ColorAlphaBlendMode>(
         &mut self,
         mode: Mode,
-        r: &RenderedText<'b>,
-        _line_advance_height: u32,
+        r: &RenderedText,
         font_color: Rgba,
-        x: i32,
-        y: i32,
+        loc: [i32; 2],
     ) {
         let cc = mode.prepare_color(font_color);
-        let mut cur_x = x;
-        let mut cur_y = y;
+        let mut cur_x = loc[0];
+        let mut cur_y = loc[1];
         for i in r.get_instructions() {
             match *i {
                 RenderedTextInstruction::RenderGlyph(ref g) => {
-                    self.draw_glyph_alpha_xy(mode, g, &cc, cur_x, cur_y);
+                    self.draw_glyph_alpha_xy(mode, g, &cc, [cur_x, cur_y]);
                     cur_x += g.advance_width;
                 }
                 RenderedTextInstruction::Kerning(dx) => {
@@ -300,7 +353,7 @@ impl<'a> Canvas<'a> {
                 }
                 RenderedTextInstruction::NextLine(dy, ..) => {
                     cur_y += dy as i32;
-                    cur_x = x;
+                    cur_x = loc[0];
                 }
             }
         }
@@ -311,20 +364,19 @@ impl<'a> Canvas<'a> {
         mode: Mode,
         g: &Glyph,
         color_ctxt: &Mode::ColorContext,
-        x: i32,
-        y: i32,
+        loc: [i32; 2],
     ) {
         g.render_xy(
-            x,
-            y,
+            loc[0],
+            loc[1],
             self,
             |s, x, y| {
-                if let Some(dst) = s.try_get_color_mut(x, y) {
+                if let Some(dst) = s.try_get_color_mut([x, y]) {
                     mode.blend_solid_color(dst, color_ctxt);
                 }
             },
             |s, x, y, alpha| {
-                if let Some(dst) = s.try_get_color_mut(x, y) {
+                if let Some(dst) = s.try_get_color_mut([x, y]) {
                     mode.blend_color(dst, color_ctxt, alpha);
                 }
             },
