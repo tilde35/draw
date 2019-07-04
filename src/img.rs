@@ -4,7 +4,7 @@ use crate::errors::ImageLoadError;
 use crate::idx::Indexable2D;
 use crate::rgba::Rgba;
 use crate::rows::{RowsIter, RowsMutIter};
-use crate::sub_img_params::SubImageParams;
+use crate::sub_img_params::{SubImageBuilder, SubImageParams};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Image {
@@ -254,12 +254,16 @@ impl Image {
         }
     }
 
-    pub fn sub_images(&self, params: &SubImageParams) -> Vec<Image> {
+    pub fn sub_images_from(&self, params: &SubImageParams) -> Vec<Image> {
         let mut result = Vec::new();
         for loc in params.iter_for_dimensions(self.dim()) {
             result.push(self.sub_image(loc, params.size));
         }
         result
+    }
+
+    pub fn sub_images<'a>(&'a self, size_dim: [u32; 2]) -> SubImageBuilder<'a> {
+        SubImageBuilder::new(self, size_dim)
     }
 
     fn to_piston_image(&self) -> image::RgbaImage {

@@ -26,4 +26,4 @@ pub use crate::img::Image;
 pub use crate::rect::Rect;
 pub use crate::rgba::Rgba;
 pub use crate::rows::{RowsIter, RowsMutIter};
-pub use crate::sub_img_params::{SubImageParams, SubImageParamsIter};
+pub use crate::sub_img_params::{SubImageBuilder, SubImageParams, SubImageParamsIter, MarginValue, SpacingValue};

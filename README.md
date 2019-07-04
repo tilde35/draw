@@ -33,10 +33,15 @@ img.save("output.png")?;
 // Create a new image given the specified rectangle within the original image
 let s = img.sub_image([10, 10], [16, 16]); // [x,y], [w,h]
 
+let sprites = img.sub_images([16, 16])
+                 .with_margin(4)
+                 .with_spacing(1)
+                 .create();
+
 let prms = SubImageParams::size([16, 16])
-           .with_margin(4, 4, 4, 4)
-           .with_spacing(1, 1);
-let sprites = img.sub_images(&prms);
+           .with_margin([4, 4, 4, 4])
+           .with_spacing([1, 1]);
+let sprites = img.sub_images_from(&prms);
 ```
 
 ## Color - Creation and Alternative Formats ##

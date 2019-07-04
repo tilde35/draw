@@ -1,3 +1,59 @@
+use crate::img::Image;
+
+pub struct SubImageBuilder<'a> {
+    img: &'a Image,
+    params: SubImageParams,
+}
+impl<'a> SubImageBuilder<'a> {
+    pub(crate) fn new(img: &'a Image, size_dim: [u32; 2]) -> Self {
+        Self {
+            img,
+            params: SubImageParams::size(size_dim),
+        }
+    }
+    pub fn with_margin_left(mut self, margin: u32) -> Self {
+        self.params.margin_left = margin;
+        self
+    }
+    pub fn with_margin_right(mut self, margin: u32) -> Self {
+        self.params.margin_right = margin;
+        self
+    }
+    pub fn with_margin_top(mut self, margin: u32) -> Self {
+        self.params.margin_top = margin;
+        self
+    }
+    pub fn with_margin_bottom(mut self, margin: u32) -> Self {
+        self.params.margin_bottom = margin;
+        self
+    }
+    pub fn with_margin(mut self, margin: impl MarginValue) -> Self {
+        let margin = margin.expand_margins();
+        self.params.margin_top = margin[0];
+        self.params.margin_right = margin[1];
+        self.params.margin_bottom = margin[2];
+        self.params.margin_left = margin[3];
+        self
+    }
+    pub fn with_spacing_horz(mut self, space: u32) -> Self {
+        self.params.spacing_horz = space;
+        self
+    }
+    pub fn with_spacing_vert(mut self, space: u32) -> Self {
+        self.params.spacing_vert = space;
+        self
+    }
+    pub fn with_spacing(mut self, space: impl SpacingValue) -> Self {
+        let space = space.expand_spacings();
+        self.params.spacing_vert = space[0];
+        self.params.spacing_horz = space[1];
+        self
+    }
+    pub fn create(self) -> Vec<Image> {
+        self.img.sub_images_from(&self.params)
+    }
+}
+
 #[derive(Default, Clone, Debug)]
 pub struct SubImageParams {
     pub size: [u32; 2],
@@ -10,46 +66,48 @@ pub struct SubImageParams {
 }
 
 impl SubImageParams {
-    pub fn size(sub_img_dim: [u32; 2]) -> SubImageParams {
+    pub fn size(size_dim: [u32; 2]) -> Self {
         SubImageParams {
-            size: sub_img_dim,
+            size: size_dim,
             ..Default::default()
         }
     }
-    pub fn with_margin_left(mut self, margin: u32) -> SubImageParams {
+    pub fn with_margin_left(mut self, margin: u32) -> Self {
         self.margin_left = margin;
         self
     }
-    pub fn with_margin_right(mut self, margin: u32) -> SubImageParams {
+    pub fn with_margin_right(mut self, margin: u32) -> Self {
         self.margin_right = margin;
         self
     }
-    pub fn with_margin_top(mut self, margin: u32) -> SubImageParams {
+    pub fn with_margin_top(mut self, margin: u32) -> Self {
         self.margin_top = margin;
         self
     }
-    pub fn with_margin_bottom(mut self, margin: u32) -> SubImageParams {
+    pub fn with_margin_bottom(mut self, margin: u32) -> Self {
         self.margin_bottom = margin;
         self
     }
-    pub fn with_margin(mut self, margin_top: u32, margin_right: u32, margin_bottom: u32, margin_left: u32) -> SubImageParams {
-        self.margin_top = margin_top;
-        self.margin_right = margin_right;
-        self.margin_bottom = margin_bottom;
-        self.margin_left = margin_left;
+    pub fn with_margin(mut self, margin: impl MarginValue) -> Self {
+        let margin = margin.expand_margins();
+        self.margin_top = margin[0];
+        self.margin_right = margin[1];
+        self.margin_bottom = margin[2];
+        self.margin_left = margin[3];
         self
     }
-    pub fn with_spacing_horz(mut self, space: u32) -> SubImageParams {
+    pub fn with_spacing_horz(mut self, space: u32) -> Self {
         self.spacing_horz = space;
         self
     }
-    pub fn with_spacing_vert(mut self, space: u32) -> SubImageParams {
+    pub fn with_spacing_vert(mut self, space: u32) -> Self {
         self.spacing_vert = space;
         self
     }
-    pub fn with_spacing(mut self, space_horz: u32, space_vert: u32) -> SubImageParams {
-        self.spacing_horz = space_horz;
-        self.spacing_vert = space_vert;
+    pub fn with_spacing(mut self, space: impl SpacingValue) -> Self {
+        let space = space.expand_spacings();
+        self.spacing_vert = space[0];
+        self.spacing_horz = space[1];
         self
     }
     pub fn iter_for_dimensions<'a>(&'a self, img_dim: [u32; 2]) -> SubImageParamsIter<'a> {
@@ -90,5 +148,41 @@ impl<'a> Iterator for SubImageParamsIter<'a> {
         } else {
             None
         }
+    }
+}
+
+pub trait MarginValue {
+    fn expand_margins(&self) -> [u32; 4];
+}
+impl MarginValue for u32 {
+    fn expand_margins(&self) -> [u32; 4] {
+        let m = *self;
+        [m, m, m, m]
+    }
+}
+impl MarginValue for [u32; 2] {
+    fn expand_margins(&self) -> [u32; 4] {
+        let [top, right] = *self;
+        [top, right, top, right]
+    }
+}
+impl MarginValue for [u32; 4] {
+    fn expand_margins(&self) -> [u32; 4] {
+        *self
+    }
+}
+
+pub trait SpacingValue {
+    fn expand_spacings(&self) -> [u32; 2];
+}
+impl SpacingValue for u32 {
+    fn expand_spacings(&self) -> [u32; 2] {
+        let s = *self;
+        [s, s]
+    }
+}
+impl SpacingValue for [u32; 2] {
+    fn expand_spacings(&self) -> [u32; 2] {
+        *self
     }
 }
