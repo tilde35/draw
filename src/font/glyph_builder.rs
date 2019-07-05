@@ -71,7 +71,9 @@ impl GlyphInstructionBuilder {
             match (self.state, self.state_len) {
                 (BuilderState::Offset, len) => self.cmds.push(GlyphInstruction::Offset(len)),
                 (BuilderState::Translucent(val), 1) => self.cmds.push(GlyphInstruction::Blend(val)),
-                (BuilderState::Translucent(val), len) => self.cmds.push(GlyphInstruction::BlendN(val, len)),
+                (BuilderState::Translucent(val), len) => {
+                    self.cmds.push(GlyphInstruction::BlendN(val, len))
+                }
                 (BuilderState::Solid, 1) => self.cmds.push(GlyphInstruction::Draw),
                 (BuilderState::Solid, len) => self.cmds.push(GlyphInstruction::DrawN(len)),
             }

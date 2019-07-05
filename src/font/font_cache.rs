@@ -1,7 +1,9 @@
 use crate::font::chars::RenderableCharacters;
 use crate::font::glyph::Glyph;
 use crate::font::glyph_builder::GlyphInstructionBuilder;
-use crate::font::rendered_text::{NextLineReason, RenderedCharInstruction, RenderedChars, RenderedText, RenderedTextInstruction};
+use crate::font::rendered_text::{
+    NextLineReason, RenderedCharInstruction, RenderedChars, RenderedText, RenderedTextInstruction,
+};
 use crate::font::scaled_glyph_cache::ScaledFontCache;
 use crate::img::Image;
 use crate::rgba::Rgba;
@@ -60,14 +62,24 @@ impl FontCache {
         v_metrics.ascent as u32
     }
 
-    pub fn render_chars<RChar>(&mut self, txt: RChar, size: f32, width: Option<u32>) -> RenderedChars
+    pub fn render_chars<RChar>(
+        &mut self,
+        txt: RChar,
+        size: f32,
+        width: Option<u32>,
+    ) -> RenderedChars
     where
         RChar: RenderableCharacters,
     {
         RenderedChars::from_rendered_text(&self.render(txt, size, width))
     }
 
-    pub fn cache_only_render_chars<RChar>(&self, txt: RChar, size: f32, width: Option<u32>) -> Option<RenderedChars>
+    pub fn cache_only_render_chars<RChar>(
+        &self,
+        txt: RChar,
+        size: f32,
+        width: Option<u32>,
+    ) -> Option<RenderedChars>
     where
         RChar: RenderableCharacters,
     {
@@ -97,10 +109,15 @@ impl FontCache {
         }
 
         self.preload(&chars_only[..], size);
-        self.cache_only_chars_to_text(chars, size).expect("Text preloading failed for font rendering")
+        self.cache_only_chars_to_text(chars, size)
+            .expect("Text preloading failed for font rendering")
     }
 
-    pub fn cache_only_chars_to_text<'b>(&'b self, chars: &RenderedChars, size: f32) -> Option<RenderedText<'b>> {
+    pub fn cache_only_chars_to_text<'b>(
+        &'b self,
+        chars: &RenderedChars,
+        size: f32,
+    ) -> Option<RenderedText<'b>> {
         let key = Self::key_for(size);
         if let Some(cache) = self.scaled_glyph_cache.get(&key) {
             let mut instructions = Vec::with_capacity(chars.get_instructions().len());
@@ -114,17 +131,28 @@ impl FontCache {
                         }
                     }
                     RenderedCharInstruction::Kerning(dx) => RenderedTextInstruction::Kerning(*dx),
-                    RenderedCharInstruction::NextLine(dy, r) => RenderedTextInstruction::NextLine(*dy, *r),
+                    RenderedCharInstruction::NextLine(dy, r) => {
+                        RenderedTextInstruction::NextLine(*dy, *r)
+                    }
                 };
                 instructions.push(ti);
             }
-            Some(RenderedText::new(chars.get_total_width(), chars.get_total_height(), instructions))
+            Some(RenderedText::new(
+                chars.get_total_width(),
+                chars.get_total_height(),
+                instructions,
+            ))
         } else {
             None
         }
     }
 
-    pub fn render<'b, RChar>(&'b mut self, txt: RChar, size: f32, width: Option<u32>) -> RenderedText<'b>
+    pub fn render<'b, RChar>(
+        &'b mut self,
+        txt: RChar,
+        size: f32,
+        width: Option<u32>,
+    ) -> RenderedText<'b>
     where
         RChar: RenderableCharacters,
     {
@@ -137,10 +165,16 @@ impl FontCache {
             }
         }
         self.preload(txt, size);
-        self.cache_only_render(txt, size, width).expect("Text preloading failed for font rendering")
+        self.cache_only_render(txt, size, width)
+            .expect("Text preloading failed for font rendering")
     }
 
-    pub fn cache_only_render<'b, RChar>(&'b self, txt: RChar, size: f32, width: Option<u32>) -> Option<RenderedText<'b>>
+    pub fn cache_only_render<'b, RChar>(
+        &'b self,
+        txt: RChar,
+        size: f32,
+        width: Option<u32>,
+    ) -> Option<RenderedText<'b>>
     where
         RChar: RenderableCharacters,
     {
@@ -171,7 +205,10 @@ impl FontCache {
                     match c {
                         '\r' => {}
                         '\n' => {
-                            inst.push(RenderedTextInstruction::NextLine(next_line_break, NextLineReason::WordWrap));
+                            inst.push(RenderedTextInstruction::NextLine(
+                                next_line_break,
+                                NextLineReason::WordWrap,
+                            ));
                             result_height += next_line_break;
                             if row_width > result_width {
                                 result_width = row_width;
@@ -215,7 +252,13 @@ impl FontCache {
 
                         // Move this word to the next line
                         if let Some(break_idx) = cur_line_break_point(&inst) {
-                            inst.insert(break_idx, RenderedTextInstruction::NextLine(next_line_wrap, NextLineReason::WordWrap));
+                            inst.insert(
+                                break_idx,
+                                RenderedTextInstruction::NextLine(
+                                    next_line_wrap,
+                                    NextLineReason::WordWrap,
+                                ),
+                            );
 
                             // Re-compute the row width
                             row_width = 0;
@@ -232,7 +275,10 @@ impl FontCache {
                             }
                         } else {
                             let most_recent = inst.pop().unwrap();
-                            inst.push(RenderedTextInstruction::NextLine(next_line_wrap, NextLineReason::WordWrap));
+                            inst.push(RenderedTextInstruction::NextLine(
+                                next_line_wrap,
+                                NextLineReason::WordWrap,
+                            ));
                             inst.push(most_recent);
 
                             row_width = existing.advance_width as u32;
@@ -262,7 +308,10 @@ impl FontCache {
     {
         let key = Self::key_for(size);
         let font = &self.font;
-        let cache = self.scaled_glyph_cache.entry(key).or_insert_with(|| ScaledFontCache::new(size));
+        let cache = self
+            .scaled_glyph_cache
+            .entry(key)
+            .or_insert_with(|| ScaledFontCache::new(size));
 
         let scale = Scale::uniform(size);
         let v_metrics = font.v_metrics(scale);
@@ -335,9 +384,11 @@ fn cur_line_break_point<'a>(data: &Vec<RenderedTextInstruction<'a>>) -> Option<u
     let mut cur = data.len() - 2;
     while cur > 0 {
         match &data[cur] {
-            &RenderedTextInstruction::RenderGlyph(g) => if g.ch == ' ' || g.ch == '-' {
-                return Some(cur + 1);
-            },
+            &RenderedTextInstruction::RenderGlyph(g) => {
+                if g.ch == ' ' || g.ch == '-' {
+                    return Some(cur + 1);
+                }
+            }
             &RenderedTextInstruction::Kerning(..) => {
                 // Ignore - does not apply to line breaks
             }

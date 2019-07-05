@@ -21,8 +21,14 @@ pub struct Glyph {
 }
 
 impl Glyph {
-    pub fn render_xy<Ctxt, FDraw, FBlend>(&self, x: i32, y: i32, ctxt: &mut Ctxt, mut draw: FDraw, mut blend: FBlend)
-    where
+    pub fn render_xy<Ctxt, FDraw, FBlend>(
+        &self,
+        x: i32,
+        y: i32,
+        ctxt: &mut Ctxt,
+        mut draw: FDraw,
+        mut blend: FBlend,
+    ) where
         FDraw: FnMut(&mut Ctxt, i32, i32),
         FBlend: FnMut(&mut Ctxt, i32, i32, u8),
     {
@@ -46,24 +52,34 @@ impl Glyph {
                     blend(ctxt, ix, iy, opacity);
                     ix += 1;
                 }
-                GlyphInstruction::BlendN(opacity, n) => for _ in 0..n {
-                    blend(ctxt, ix, iy, opacity);
-                    ix += 1;
-                },
+                GlyphInstruction::BlendN(opacity, n) => {
+                    for _ in 0..n {
+                        blend(ctxt, ix, iy, opacity);
+                        ix += 1;
+                    }
+                }
                 GlyphInstruction::Draw => {
                     draw(ctxt, ix, iy);
                     ix += 1;
                 }
-                GlyphInstruction::DrawN(n) => for _ in 0..n {
-                    draw(ctxt, ix, iy);
-                    ix += 1;
-                },
+                GlyphInstruction::DrawN(n) => {
+                    for _ in 0..n {
+                        draw(ctxt, ix, iy);
+                        ix += 1;
+                    }
+                }
             }
         }
     }
 
-    pub fn render_index<Ctxt, FDraw, FBlend>(&self, start_idx: usize, stride: usize, ctxt: &mut Ctxt, mut draw: FDraw, mut blend: FBlend)
-    where
+    pub fn render_index<Ctxt, FDraw, FBlend>(
+        &self,
+        start_idx: usize,
+        stride: usize,
+        ctxt: &mut Ctxt,
+        mut draw: FDraw,
+        mut blend: FBlend,
+    ) where
         FDraw: FnMut(&mut Ctxt, usize),
         FBlend: FnMut(&mut Ctxt, usize, u8),
     {
@@ -86,18 +102,22 @@ impl Glyph {
                     blend(ctxt, idx, opacity);
                     idx += 1;
                 }
-                GlyphInstruction::BlendN(opacity, n) => for _ in 0..n {
-                    blend(ctxt, idx, opacity);
-                    idx += 1;
-                },
+                GlyphInstruction::BlendN(opacity, n) => {
+                    for _ in 0..n {
+                        blend(ctxt, idx, opacity);
+                        idx += 1;
+                    }
+                }
                 GlyphInstruction::Draw => {
                     draw(ctxt, idx);
                     idx += 1;
                 }
-                GlyphInstruction::DrawN(n) => for _ in 0..n {
-                    draw(ctxt, idx);
-                    idx += 1;
-                },
+                GlyphInstruction::DrawN(n) => {
+                    for _ in 0..n {
+                        draw(ctxt, idx);
+                        idx += 1;
+                    }
+                }
             }
         }
     }

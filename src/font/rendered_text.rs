@@ -18,7 +18,11 @@ pub struct RenderedText<'a> {
     instructions: Vec<RenderedTextInstruction<'a>>,
 }
 impl<'a> RenderedText<'a> {
-    pub fn new(total_width: u32, total_height: u32, instructions: Vec<RenderedTextInstruction<'a>>) -> RenderedText<'a> {
+    pub fn new(
+        total_width: u32,
+        total_height: u32,
+        instructions: Vec<RenderedTextInstruction<'a>>,
+    ) -> RenderedText<'a> {
         RenderedText {
             total_width: total_width,
             total_height: total_height,
@@ -39,7 +43,11 @@ impl<'a> RenderedText<'a> {
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub enum RenderedCharInstruction {
-    RenderChar { ch: char, render_width: u32, advance_width: i32 },
+    RenderChar {
+        ch: char,
+        render_width: u32,
+        advance_width: i32,
+    },
     Kerning(i32),
     NextLine(u32, NextLineReason),
 }
@@ -51,7 +59,11 @@ pub struct RenderedChars {
     instructions: Vec<RenderedCharInstruction>,
 }
 impl RenderedChars {
-    pub fn new(total_width: u32, total_height: u32, instructions: Vec<RenderedCharInstruction>) -> Self {
+    pub fn new(
+        total_width: u32,
+        total_height: u32,
+        instructions: Vec<RenderedCharInstruction>,
+    ) -> Self {
         Self {
             total_width,
             total_height,
@@ -69,7 +81,9 @@ impl RenderedChars {
                     render_width: g.render_width,
                 },
                 RenderedTextInstruction::Kerning(dx) => RenderedCharInstruction::Kerning(*dx),
-                RenderedTextInstruction::NextLine(dy, r) => RenderedCharInstruction::NextLine(*dy, *r),
+                RenderedTextInstruction::NextLine(dy, r) => {
+                    RenderedCharInstruction::NextLine(*dy, *r)
+                }
             })
             .collect();
 

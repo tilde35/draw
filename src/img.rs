@@ -320,4 +320,9 @@ impl Image {
             std::slice::from_raw_parts(rgba_slice, u8_len)
         }
     }
+
+    pub fn create_alpha_color_for_3dgfx() {
+        // Note: This is not performance-critical
+        unimplemented!()
+    }
 }

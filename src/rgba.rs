@@ -1,4 +1,6 @@
 use crate::errors::RgbaParseError;
+use crate::hsl_color::Hsl;
+use crate::hsv_color::Hsv;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Rgba(pub [u8; 4]);
@@ -54,6 +56,16 @@ impl std::str::FromStr for Rgba {
         } else {
             Err(RgbaParseError::unrecognized(s))
         }
+    }
+}
+impl From<Hsv> for Rgba {
+    fn from(v: Hsv) -> Self {
+        v.rgba()
+    }
+}
+impl From<Hsl> for Rgba {
+    fn from(v: Hsl) -> Self {
+        v.rgba()
     }
 }
 

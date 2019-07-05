@@ -7,7 +7,9 @@ pub struct ScaledFontCache {
 }
 impl ScaledFontCache {
     pub fn new(_size: f32) -> ScaledFontCache {
-        ScaledFontCache { glyph_cache: HashMap::new() }
+        ScaledFontCache {
+            glyph_cache: HashMap::new(),
+        }
     }
     pub fn create_if_missing<F>(&mut self, ch: char, init: F)
     where
