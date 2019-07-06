@@ -321,8 +321,56 @@ impl Image {
         }
     }
 
-    pub fn create_alpha_color_for_3dgfx() {
+    pub fn create_alpha_color_for_3dgfx(&mut self) {
+        self.create_alpha_color_for_3dgfx_using(16, 0);
+    }
+    pub fn create_alpha_color_for_3dgfx_using(
+        &mut self,
+        alpha_threshold: u8,
+        min_alpha_result: u8,
+    ) {
         // Note: This is not performance-critical
-        unimplemented!()
+        let stride = self.stride() as isize;
+        let mut visited = Vec::with_capacity(self.contents.len());
+        for _ in 0..self.contents.len() {
+            visited.push(false);
+        }
+
+        // Step 1: Gather all transparent pixels next to a non-transparent pixel
+        let mut to_visit = Vec::with_capacity(self.contents.len());
+        for (idx, c) in self.contents.iter().cloned().enumerate() {
+            if c.alpha() <= alpha_threshold {
+                to_visit.push(idx as isize);
+            }
+        }
+        let mut next_set: Vec<isize> = Vec::with_capacity(self.contents.len());
+
+        let add_color: Box< Fn(&mut Vec<Rgba>) > = Box::new (|c| {});
+
+        // Step 2: For every transparent pixel: blend all visited/non-transparent pixel colors
+        while to_visit.len() > 0 {
+            for idx in to_visit.iter().cloned() {
+                // Get surrounding colors
+                // add_color(&mut result, &self.contents, &visited, idx - stride - 1);
+            }
+
+            // Mark everything as visited, move next_set into to_visit
+            for idx in to_visit.iter().cloned() {
+                visited[idx as usize] = true;
+            }
+            to_visit.clear();
+            std::mem::swap(&mut to_visit, &mut next_set);
+        }
+    }
+    fn gfx_combine(&self, result: &mut Vec<(Rgba, f32)>, visited: &Vec<bool>, dist: f32, idx: isize) {
+
+    }
+    fn ati(&self, idx: isize, visited: &Vec<bool>) -> Option<(Rgba, bool)> {
+        let c = self.contents.get(idx as usize).cloned();
+        if let Some(c) = c {
+            Some((c, visited[idx as usize]))
+        } else {
+            None
+        }
     }
 }
