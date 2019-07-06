@@ -22,10 +22,9 @@ Completed tasks:
 - Fix any incorrect documentation in README.md
 - Sub-image: Add a builder from the image struct itself
 - Implement HSV/HSL
+- Include alpha-fix feature (set color for pixels where alpha=0) to improve OpenGL blending
 
 Improvements for drawing crate:
-- Include alpha-fix feature (set color for pixels where alpha=0) to improve OpenGL blending
-    - Implement create_alpha_color_for_3dgfx method
 - Verify HSV/HSL algorithms
     - http://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
 - Include a default font (something like Carlito which is small in size: https://fontlibrary.org/en/font/carlito)
