@@ -348,6 +348,9 @@ impl Image {
         for y in 0..(self.height() as i32) {
             for x in 0..(self.width() as i32) {
                 let loc = [x, y];
+                if self.get(loc).alpha() > alpha_threshold {
+                    continue;
+                }
                 let mut has_neighbor = false;
                 for (_, dloc) in neighboors.iter().cloned() {
                     let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
@@ -365,7 +368,6 @@ impl Image {
 
         // Step 2: For every transparent pixel: blend all visited/non-transparent pixel colors
         while to_visit.len() > 0 {
-            println!("Visiting {} pixels", to_visit.len());
             // Update the next round of transparent pixels
             for loc in to_visit.iter().cloned() {
                 // RGB + weight
@@ -373,11 +375,7 @@ impl Image {
                 // Get surrounding colors
                 for (weight, dloc) in neighboors.iter().cloned() {
                     let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
-                    println!("{:?} to {:?} => {:?}", loc, nloc, self.try_get(nloc));
                     self.gfx_combine(alpha_threshold, &mut result, &visited, weight, nloc);
-                }
-                if result[3] == 0.0f32 {
-                    panic!("Invalid state!");
                 }
                 for (_, dloc) in neighboors.iter().cloned() {
                     let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
