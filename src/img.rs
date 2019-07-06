@@ -324,53 +324,111 @@ impl Image {
     pub fn create_alpha_color_for_3dgfx(&mut self) {
         self.create_alpha_color_for_3dgfx_using(16, 0);
     }
-    pub fn create_alpha_color_for_3dgfx_using(
-        &mut self,
-        alpha_threshold: u8,
-        min_alpha_result: u8,
-    ) {
+    pub fn create_alpha_color_for_3dgfx_using(&mut self, alpha_threshold: u8, alpha_result: u8) {
         // Note: This is not performance-critical
-        let stride = self.stride() as isize;
         let mut visited = Vec::with_capacity(self.contents.len());
         for _ in 0..self.contents.len() {
             visited.push(false);
         }
 
+        let neighboors = [
+            (0.7f32, [-1, -1]),
+            (1.0f32, [0, -1]),
+            (0.7f32, [1, -1]),
+            (1.0f32, [-1, 0]),
+            (1.0f32, [1, 0]),
+            (0.7f32, [-1, 1]),
+            (1.0f32, [0, 1]),
+            (0.7f32, [1, 1]),
+        ];
+
         // Step 1: Gather all transparent pixels next to a non-transparent pixel
-        let mut to_visit = Vec::with_capacity(self.contents.len());
-        for (idx, c) in self.contents.iter().cloned().enumerate() {
-            if c.alpha() <= alpha_threshold {
-                to_visit.push(idx as isize);
+        let mut to_visit: Vec<[i32; 2]> = Vec::with_capacity(self.contents.len());
+        let mut next_set: Vec<[i32; 2]> = Vec::with_capacity(self.contents.len());
+        for y in 0..(self.height() as i32) {
+            for x in 0..(self.width() as i32) {
+                let loc = [x, y];
+                let mut has_neighbor = false;
+                for (_, dloc) in neighboors.iter().cloned() {
+                    let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
+                    if let Some(c) = self.try_get(nloc) {
+                        if c.alpha() > alpha_threshold {
+                            has_neighbor = true;
+                        }
+                    }
+                }
+                if has_neighbor {
+                    to_visit.push(loc);
+                }
             }
         }
-        let mut next_set: Vec<isize> = Vec::with_capacity(self.contents.len());
-
-        let add_color: Box< Fn(&mut Vec<Rgba>) > = Box::new (|c| {});
 
         // Step 2: For every transparent pixel: blend all visited/non-transparent pixel colors
         while to_visit.len() > 0 {
-            for idx in to_visit.iter().cloned() {
+            println!("Visiting {} pixels", to_visit.len());
+            // Update the next round of transparent pixels
+            for loc in to_visit.iter().cloned() {
+                // RGB + weight
+                let mut result = [0.0, 0.0, 0.0, 0.0f32];
                 // Get surrounding colors
-                // add_color(&mut result, &self.contents, &visited, idx - stride - 1);
+                for (weight, dloc) in neighboors.iter().cloned() {
+                    let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
+                    println!("{:?} to {:?} => {:?}", loc, nloc, self.try_get(nloc));
+                    self.gfx_combine(alpha_threshold, &mut result, &visited, weight, nloc);
+                }
+                if result[3] == 0.0f32 {
+                    panic!("Invalid state!");
+                }
+                for (_, dloc) in neighboors.iter().cloned() {
+                    let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
+                    if let Some(nidx) = self.try_index_at(nloc) {
+                        let c = self.contents[nidx];
+                        if c.alpha() <= alpha_threshold {
+                            if !next_set.contains(&nloc)
+                                && !to_visit.contains(&nloc)
+                                && !visited[nidx]
+                            {
+                                next_set.push(nloc);
+                            }
+                        }
+                    }
+                }
+
+                result[3] = (alpha_result as f32) / 255.0;
+                *self.get_mut(loc) = Rgba::from_f32(result);
             }
 
             // Mark everything as visited, move next_set into to_visit
-            for idx in to_visit.iter().cloned() {
-                visited[idx as usize] = true;
+            for loc in to_visit.iter().cloned() {
+                if let Some(idx) = self.try_index_at(loc) {
+                    visited[idx as usize] = true;
+                }
             }
             to_visit.clear();
             std::mem::swap(&mut to_visit, &mut next_set);
         }
     }
-    fn gfx_combine(&self, result: &mut Vec<(Rgba, f32)>, visited: &Vec<bool>, dist: f32, idx: isize) {
-
-    }
-    fn ati(&self, idx: isize, visited: &Vec<bool>) -> Option<(Rgba, bool)> {
-        let c = self.contents.get(idx as usize).cloned();
-        if let Some(c) = c {
-            Some((c, visited[idx as usize]))
+    fn gfx_combine(
+        &self,
+        alpha_threshold: u8,
+        result: &mut [f32; 4],
+        visited: &Vec<bool>,
+        weight: f32,
+        loc: [i32; 2],
+    ) {
+        if let Some(idx) = self.try_index_at(loc) {
+            let c = self.contents[idx];
+            if visited[idx] || c.alpha() > alpha_threshold {
+                let total_weight = result[3] + weight;
+                let pct = weight / total_weight;
+                let rgb = c.rgb_f32();
+                result[0] = (1.0 - pct) * result[0] + pct * rgb[0];
+                result[1] = (1.0 - pct) * result[1] + pct * rgb[1];
+                result[2] = (1.0 - pct) * result[2] + pct * rgb[2];
+                result[3] = total_weight;
+            }
         } else {
-            None
+            // Nothing to do (not a valid index)
         }
     }
 }
