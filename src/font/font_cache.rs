@@ -1,3 +1,4 @@
+use crate::errors::FontLoadError;
 use crate::font::chars::RenderableCharacters;
 use crate::font::glyph::Glyph;
 use crate::font::glyph_builder::GlyphInstructionBuilder;
@@ -40,6 +41,17 @@ impl FontCache {
             font: font,
             scaled_glyph_cache: HashMap::new(),
         })
+    }
+    pub fn open(font_file: impl AsRef<std::path::Path>) -> Result<FontCache, FontLoadError> {
+        use std::fs::File;
+        use std::io::Read;
+
+        let mut f = File::open(font_file)?;
+        let mut buf = Vec::new();
+        f.read_to_end(&mut buf)?;
+
+        let result = Self::from_vec(buf)?;
+        Ok(result)
     }
 
     fn key_for(size: f32) -> u64 {

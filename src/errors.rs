@@ -53,3 +53,35 @@ impl From<image::ImageError> for ImageLoadError {
         ImageLoadError(v)
     }
 }
+
+#[derive(Debug)]
+pub enum FontLoadError {
+    IoError(std::io::Error),
+    FontError(rusttype::Error),
+}
+impl From<std::io::Error> for FontLoadError {
+    fn from(e: std::io::Error) -> Self {
+        FontLoadError::IoError(e)
+    }
+}
+impl From<rusttype::Error> for FontLoadError {
+    fn from(e: rusttype::Error) -> Self {
+        FontLoadError::FontError(e)
+    }
+}
+impl std::fmt::Display for FontLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FontLoadError::IoError(e) => write!(f, "{}", e),
+            FontLoadError::FontError(e) => write!(f, "{}", e),
+        }
+    }
+}
+impl std::error::Error for FontLoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            FontLoadError::IoError(e) => Some(e),
+            FontLoadError::FontError(e) => Some(e),
+        }
+    }
+}

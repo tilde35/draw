@@ -20,7 +20,7 @@ pub use crate::blend::{
 pub use crate::blend::{ColorBlendOpaque, ColorBlendOverwrite, ColorBlendTransparent};
 pub use crate::blend::{ImageBlendOpaque, ImageBlendOverwrite, ImageBlendTransparent};
 pub use crate::canvas::Canvas;
-pub use crate::errors::{ImageLoadError, RgbaParseError};
+pub use crate::errors::{FontLoadError, ImageLoadError, RgbaParseError};
 pub use crate::font::chars::{RenderableCharacters, SliceCharIter};
 pub use crate::font::font_cache::FontCache;
 pub use crate::font::glyph::{Glyph, GlyphInstruction};

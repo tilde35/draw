@@ -25,6 +25,4 @@ Completed tasks:
 - Include alpha-fix feature (set color for pixels where alpha=0) to improve OpenGL blending
 - Verify HSV/HSL algorithms
     - http://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
-
-Improvements for drawing crate:
 - Include a default font (something like Carlito which is small in size: https://fontlibrary.org/en/font/carlito)
