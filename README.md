@@ -95,39 +95,6 @@ let r = font.render("Example", 24.0, Some(200));
 c.draw_rendered_text(&r, Rgba([0, 0, 0, 255]), [10, 10]);
 ```
 
-## Blend Modes ##
-
-By default, the draw operations will use the blending that will work in all circumstances (may not be the fastest).
-If a faster performing blend strategy is required, then the `_using` version of the method may be called and the
-appropriate blend strategy specified.
-
-### ColorBlendMode ###
-
-Used when working with a single color without variation. Default implementations
-are (ranked in order of fastest to slowest):
-
-* **ColorBlendOverwrite:** Overwrites the base color regardless of source color's transparency.
-* **ColorBlendOpaque:** Performs drawing while handling source color transparency assuming the background is opaque (no transparency).
-* **ColorBlendTransparent:** Performs drawing while handling any combination of transparency.
-
-### ColorAlphaBlendMode ###
-
-Used when working with a single color, but the transparency will be varied. Default
-implementations are (ranked in order of fastest to slowest):
-
-* **SolidColorAlphaBlendOverwrite:** Assumes the source color is opaque, overwrites existing background.
-* **ColorAlphaBlendOverwrite:** Overwrites background with the resulting color. Note, if the source color is transparent, then the opacity will never be greater than the source's alpha value.
-* **ColorAlphaBlendOpaque:** Performs drawing while handling any relevant alpha blending assuming the background is opaque.
-* **ColorAlphaBlendTransparent:** Performs drawing while handling any relevant alpha blending, regardless of source/background transparency.
-
-### ImageBlendMode ###
-
-Used when working with a combination of colors (such as with images).
-
-* **ImageBlendOverwrite:** Overwrites the base color regardless of source color's transparency.
-* **ImageBlendOpaque:** Performs drawing while handling source color transparency, assumes background color is opaque.
-* **ImageBlendTransparent:** Performs drawing while handling any combination of transparency.
-
 ## GLIUM ##
 
 ```rust
@@ -172,6 +139,7 @@ let font = FontCache::from_static(include_bytes!("Arial.ttf")).unwrap();
 let font = FontCache::from_slice(bytes).unwrap();
 let font = FontCache::from_vec(bytes).unwrap();
 let font = FontCache::from_font(rusttype_font);
+let font = FontCache::open("Arial.ttf").unwrap();
 
 let font_size = 24.0;
 let line_height = font.line_advance_height(font_size);
@@ -206,5 +174,37 @@ for i in r.get_instructions() {
         }
     }
 }
-
 ```
+
+## Blend Modes ##
+
+By default, the draw operations will use the blending that will work in all circumstances (may not be the fastest).
+If a faster performing blend strategy is required, then the `_using` version of the method may be called and the
+appropriate blend strategy specified.
+
+### ColorBlendMode ###
+
+Used when working with a single color without variation. Default implementations
+are (ranked in order of fastest to slowest):
+
+* **ColorBlendOverwrite:** Overwrites the base color regardless of source color's transparency.
+* **ColorBlendOpaque:** Performs drawing while handling source color transparency assuming the background is opaque (no transparency).
+* **ColorBlendTransparent:** Performs drawing while handling any combination of transparency.
+
+### ColorAlphaBlendMode ###
+
+Used when working with a single color, but the transparency will be varied. Default
+implementations are (ranked in order of fastest to slowest):
+
+* **SolidColorAlphaBlendOverwrite:** Assumes the source color is opaque, overwrites existing background.
+* **ColorAlphaBlendOverwrite:** Overwrites background with the resulting color. Note, if the source color is transparent, then the opacity will never be greater than the source's alpha value.
+* **ColorAlphaBlendOpaque:** Performs drawing while handling any relevant alpha blending assuming the background is opaque.
+* **ColorAlphaBlendTransparent:** Performs drawing while handling any relevant alpha blending, regardless of source/background transparency.
+
+### ImageBlendMode ###
+
+Used when working with a combination of colors (such as with images).
+
+* **ImageBlendOverwrite:** Overwrites the base color regardless of source color's transparency.
+* **ImageBlendOpaque:** Performs drawing while handling source color transparency, assumes background color is opaque.
+* **ImageBlendTransparent:** Performs drawing while handling any combination of transparency.
