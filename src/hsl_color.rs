@@ -86,7 +86,7 @@ pub(crate) fn rgb2hsl(rgb: [f32; 3]) -> [f32; 3] {
         } else {
             h = (r - g) / d + 4.0;
         }
-        [360.0 * h, s, l]
+        [h * 360.0 / 6.0, s, l]
     }
 }
 pub(crate) fn hsl2rgb(hsl: [f32; 3]) -> [f32; 3] {
@@ -96,7 +96,7 @@ pub(crate) fn hsl2rgb(hsl: [f32; 3]) -> [f32; 3] {
     if s <= 0.0 {
         [l, l, l]
     } else {
-        let q = if l < 0.4 {
+        let q = if l < 0.5 {
             l * (1.0 + s)
         } else {
             l + s - l * s
