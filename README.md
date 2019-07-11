@@ -102,7 +102,7 @@ let img_tx = {
     let img = Image::open("my_file.png").unwrap();
 
     let raw = glium::texture::RawImage2d {
-        data: std::borrow::Cow::Borrowed(img.rgba_data()),
+        data: std::borrow::Cow::Borrowed(img.raw_rgba_bytes()),
         width: img.width(),
         height: img.height(),
         format: glium::texture::ClientFormat::U8U8U8U8,
@@ -120,7 +120,7 @@ let img_tx_array = {
     let mut raw_entries = Vec::new();
     for i in sub_imgs.iter() {
         let raw = glium::texture::RawImage2d {
-            data: std::borrow::Cow::Borrowed(i.rgba_data()),
+            data: std::borrow::Cow::Borrowed(i.raw_rgba_bytes()),
             width: i.width(),
             height: i.height(),
             format: glium::texture::ClientFormat::U8U8U8U8,
