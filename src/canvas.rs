@@ -66,19 +66,30 @@ impl<'a> Canvas<'a> {
 
     pub fn rows_iter<'b>(&'b self) -> RowsIter<'b> {
         let idx0 = self.idx0;
-        let width = self.dim[0] as usize;
-        let stride = self.stride;
-        let max_idx = idx0 + (self.dim[1] as usize) * stride;
-        unsafe { RowsIter::unchecked_from_index(self.img.buffer(), idx0, width, stride, max_idx) }
-    }
-
-    pub fn rows_iter_mut<'b>(&'b mut self) -> RowsMutIter<'b> {
-        let idx0 = self.idx0;
+        let pos0 = self.loc();
         let width = self.dim[0] as usize;
         let stride = self.stride;
         let max_idx = idx0 + (self.dim[1] as usize) * stride;
         unsafe {
-            RowsMutIter::unchecked_from_index(self.img.buffer_mut(), idx0, width, stride, max_idx)
+            RowsIter::unchecked_from_index(self.img.buffer(), idx0, pos0, width, stride, max_idx)
+        }
+    }
+
+    pub fn rows_iter_mut<'b>(&'b mut self) -> RowsMutIter<'b> {
+        let idx0 = self.idx0;
+        let pos0 = self.loc();
+        let width = self.dim[0] as usize;
+        let stride = self.stride;
+        let max_idx = idx0 + (self.dim[1] as usize) * stride;
+        unsafe {
+            RowsMutIter::unchecked_from_index(
+                self.img.buffer_mut(),
+                idx0,
+                pos0,
+                width,
+                stride,
+                max_idx,
+            )
         }
     }
 
@@ -302,6 +313,7 @@ impl<'a> Canvas<'a> {
         txt: &str,
         loc: [i32; 2],
         width: Option<u32>,
+        indent: Option<u32>,
     ) {
         self.draw_text_using(
             ColorAlphaBlendTransparent,
@@ -311,6 +323,7 @@ impl<'a> Canvas<'a> {
             txt,
             loc,
             width,
+            indent,
         );
     }
 
@@ -323,13 +336,20 @@ impl<'a> Canvas<'a> {
         txt: &str,
         loc: [i32; 2],
         width: Option<u32>,
+        indent: Option<u32>,
     ) {
-        let r = font_cache.render(txt, font_size, width);
-        self.draw_rendered_text_using(mode, &r, font_color, loc);
+        let r = font_cache.render(txt, font_size, width, indent);
+        self.draw_rendered_text_using(mode, &r, font_color, loc, indent.unwrap_or(0));
     }
 
-    pub fn draw_rendered_text(&mut self, r: &RenderedText, font_color: Rgba, loc: [i32; 2]) {
-        self.draw_rendered_text_using(ColorAlphaBlendTransparent, r, font_color, loc)
+    pub fn draw_rendered_text(
+        &mut self,
+        r: &RenderedText,
+        font_color: Rgba,
+        loc: [i32; 2],
+        indent: u32,
+    ) {
+        self.draw_rendered_text_using(ColorAlphaBlendTransparent, r, font_color, loc, indent)
     }
 
     pub fn draw_rendered_text_using<Mode: ColorAlphaBlendMode>(
@@ -338,9 +358,10 @@ impl<'a> Canvas<'a> {
         r: &RenderedText,
         font_color: Rgba,
         loc: [i32; 2],
+        indent: u32,
     ) {
         let cc = mode.prepare_color(font_color);
-        let mut cur_x = loc[0];
+        let mut cur_x = loc[0] + (indent as i32);
         let mut cur_y = loc[1];
         for i in r.get_instructions() {
             match *i {

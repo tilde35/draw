@@ -4,6 +4,7 @@ use crate::rgba::Rgba;
 pub struct RowsIter<'a> {
     buf: &'a [Rgba],
     cur_idx: usize,
+    cur_pos: [i32; 2],
     width: usize,
     stride: usize,
     max_idx: usize,
@@ -34,6 +35,7 @@ impl<'a> RowsIter<'a> {
         RowsIter {
             buf: img.buffer(),
             cur_idx: idx0,
+            cur_pos: [loc[0] as i32, loc[1] as i32],
             width: width,
             stride: stride,
             max_idx: idx0 + (height as usize) * stride,
@@ -42,6 +44,7 @@ impl<'a> RowsIter<'a> {
     pub unsafe fn unchecked_from_index(
         buf: &'a [Rgba],
         idx0: usize,
+        pos0: [i32; 2],
         width: usize,
         stride: usize,
         max_idx: usize,
@@ -49,10 +52,14 @@ impl<'a> RowsIter<'a> {
         RowsIter {
             buf: buf,
             cur_idx: idx0,
+            cur_pos: pos0,
             width: width,
             stride: stride,
             max_idx: max_idx,
         }
+    }
+    pub fn with_pos(self) -> RowsPosIter<'a> {
+        RowsPosIter(self)
     }
 }
 impl<'a> Iterator for RowsIter<'a> {
@@ -62,7 +69,22 @@ impl<'a> Iterator for RowsIter<'a> {
         if self.cur_idx <= self.max_idx {
             let result = &self.buf[self.cur_idx..(self.cur_idx + self.width)];
             self.cur_idx += self.stride;
+            self.cur_pos[1] += 1;
             Some(result)
+        } else {
+            None
+        }
+    }
+}
+
+pub struct RowsPosIter<'a>(RowsIter<'a>);
+impl<'a> Iterator for RowsPosIter<'a> {
+    type Item = ([i32; 2], &'a [Rgba]);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let pos = self.0.cur_pos;
+        if let Some(row) = self.0.next() {
+            Some((pos, row))
         } else {
             None
         }
@@ -72,6 +94,7 @@ impl<'a> Iterator for RowsIter<'a> {
 pub struct RowsMutIter<'a> {
     buf: &'a mut [Rgba],
     cur_idx: usize,
+    cur_pos: [i32; 2],
     width: usize,
     stride: usize,
     max_idx: usize,
@@ -102,6 +125,7 @@ impl<'a> RowsMutIter<'a> {
         RowsMutIter {
             buf: img.buffer_mut(),
             cur_idx: idx0,
+            cur_pos: [loc[0] as i32, loc[1] as i32],
             width: width,
             stride: stride,
             max_idx: idx0 + (height as usize) * stride,
@@ -110,6 +134,7 @@ impl<'a> RowsMutIter<'a> {
     pub unsafe fn unchecked_from_index(
         buf: &'a mut [Rgba],
         idx0: usize,
+        pos0: [i32; 2],
         width: usize,
         stride: usize,
         max_idx: usize,
@@ -117,10 +142,14 @@ impl<'a> RowsMutIter<'a> {
         RowsMutIter {
             buf: buf,
             cur_idx: idx0,
+            cur_pos: pos0,
             width: width,
             stride: stride,
             max_idx: max_idx,
         }
+    }
+    pub fn with_pos(self) -> RowsMutPosIter<'a> {
+        RowsMutPosIter(self)
     }
 }
 impl<'a> Iterator for RowsMutIter<'a> {
@@ -136,6 +165,20 @@ impl<'a> Iterator for RowsMutIter<'a> {
                 let raw = slice as *mut [Rgba];
                 Some(&mut *raw)
             }
+        } else {
+            None
+        }
+    }
+}
+
+pub struct RowsMutPosIter<'a>(RowsMutIter<'a>);
+impl<'a> Iterator for RowsMutPosIter<'a> {
+    type Item = ([i32; 2], &'a mut [Rgba]);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let pos = self.0.cur_pos;
+        if let Some(row) = self.0.next() {
+            Some((pos, row))
         } else {
             None
         }

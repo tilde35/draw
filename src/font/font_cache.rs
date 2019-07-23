@@ -79,11 +79,12 @@ impl FontCache {
         txt: RChar,
         size: f32,
         width: Option<u32>,
+        indent: Option<u32>,
     ) -> RenderedChars
     where
         RChar: RenderableCharacters,
     {
-        RenderedChars::from_rendered_text(&self.render(txt, size, width))
+        RenderedChars::from_rendered_text(&self.render(txt, size, width, indent))
     }
 
     pub fn cache_only_render_chars<RChar>(
@@ -91,11 +92,12 @@ impl FontCache {
         txt: RChar,
         size: f32,
         width: Option<u32>,
+        indent: Option<u32>,
     ) -> Option<RenderedChars>
     where
         RChar: RenderableCharacters,
     {
-        if let Some(t) = self.cache_only_render(txt, size, width) {
+        if let Some(t) = self.cache_only_render(txt, size, width, indent) {
             Some(RenderedChars::from_rendered_text(&t))
         } else {
             None
@@ -164,6 +166,7 @@ impl FontCache {
         txt: RChar,
         size: f32,
         width: Option<u32>,
+        indent: Option<u32>,
     ) -> RenderedText<'b>
     where
         RChar: RenderableCharacters,
@@ -172,12 +175,12 @@ impl FontCache {
             // Current lifetime limitations cause the cache_only_render to stay alive for the entire function
             // The unsafe code may be removed in the future (note: still not working as of Rust 1.35)
             let ptr = self as *mut Self;
-            if let Some(r) = (*ptr).cache_only_render(txt, size, width) {
+            if let Some(r) = (*ptr).cache_only_render(txt, size, width, indent) {
                 return r;
             }
         }
         self.preload(txt, size);
-        self.cache_only_render(txt, size, width)
+        self.cache_only_render(txt, size, width, indent)
             .expect("Text preloading failed for font rendering")
     }
 
@@ -186,6 +189,7 @@ impl FontCache {
         txt: RChar,
         size: f32,
         width: Option<u32>,
+        indent: Option<u32>,
     ) -> Option<RenderedText<'b>>
     where
         RChar: RenderableCharacters,
@@ -203,7 +207,15 @@ impl FontCache {
         };
 
         let mut inst = Vec::with_capacity(inst_capacity);
-        let mut row_width = 0;
+        let mut row_width = indent.unwrap_or(0);
+        if row_width > max_width {
+            // Indent is greater than the allowed width
+            row_width = 0;
+            inst.push(RenderedTextInstruction::NextLine(
+                next_line_break,
+                NextLineReason::WordWrap,
+            ));
+        }
         let mut result_width = 0;
         let mut result_height = next_line_wrap;
 
