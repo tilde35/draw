@@ -159,6 +159,7 @@ impl<'a> Iterator for RowsMutIter<'a> {
         if self.cur_idx < self.max_idx {
             let (from_idx, to_idx) = (self.cur_idx, self.cur_idx + self.width);
             self.cur_idx += self.stride;
+            self.cur_pos[1] += 1;
             unsafe {
                 // Note: This is safe assuming width is less/equal to stride (verified in new method)
                 let slice = &mut self.buf[from_idx..to_idx];

@@ -88,11 +88,12 @@ c.draw_text(
     Rgba([0, 0, 0, 255]),  // Font color
     "Example text",        // Text
     [10, 10],              // Position
-    Some(200)              // Width (for text wrapping)
+    Some(200),             // Width (for text wrapping)
+    None,                  // Indentation (first line only)
 );
 
-let r = font.render("Example", 24.0, Some(200));
-c.draw_rendered_text(&r, Rgba([0, 0, 0, 255]), [10, 10]);
+let r = font.render("Example", 24.0, Some(200), None);
+c.draw_rendered_text(&r, Rgba([0, 0, 0, 255]), [10, 10], 0);
 ```
 
 ## GLIUM ##
@@ -143,8 +144,8 @@ let font = FontCache::open("Arial.ttf").unwrap();
 
 let font_size = 24.0;
 let line_height = font.line_advance_height(font_size);
-let r = font.render("Example", font_size, Some(200));
-let r = font.cache_only_render("Example", font_size, Some(200)).unwrap();
+let r = font.render("Example", font_size, Some(200), None);
+let r = font.cache_only_render("Example", font_size, Some(200), None).unwrap();
 
 let width = r.get_total_width();
 let height = r.get_total_height();
