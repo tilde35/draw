@@ -199,6 +199,12 @@ impl Rgba {
         hsl.offset_lightness(offset);
         *self = hsl.into();
     }
+    pub fn offset_saturation_lightness(&mut self, offset_saturation: f32, offset_lightness: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.offset_saturation(offset_saturation);
+        hsl.offset_lightness(offset_lightness);
+        *self = hsl.into();
+    }
     pub fn rgba_f32(&self) -> [f32; 4] {
         let c = self.0;
         [
