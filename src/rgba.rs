@@ -169,6 +169,36 @@ impl Rgba {
     pub fn set_alpha(&mut self, v: u8) {
         self.0[3] = v;
     }
+    pub fn set_hue(&mut self, v: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.set_hue(v);
+        *self = hsl.into();
+    }
+    pub fn set_saturation(&mut self, s: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.set_saturation(s);
+        *self = hsl.into();
+    }
+    pub fn set_lightness(&mut self, l: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.set_lightness(l);
+        *self = hsl.into();
+    }
+    pub fn offset_hue(&mut self, offset: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.offset_hue(offset);
+        *self = hsl.into();
+    }
+    pub fn offset_saturation(&mut self, offset: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.offset_saturation(offset);
+        *self = hsl.into();
+    }
+    pub fn offset_lightness(&mut self, offset: f32) {
+        let mut hsl: Hsl = (*self).into();
+        hsl.offset_lightness(offset);
+        *self = hsl.into();
+    }
     pub fn rgba_f32(&self) -> [f32; 4] {
         let c = self.0;
         [

@@ -52,6 +52,33 @@ impl Hsl {
     pub fn alpha(&self) -> f32 {
         self.alpha
     }
+    pub fn set_hue(&mut self, hue: f32) {
+        self.hue = valid_range(hue, "hue", 0.0, 360.0);
+    }
+    pub fn set_saturation(&mut self, s: f32) {
+        self.saturation = valid_range(s, "saturation", 0.0, 1.0);
+    }
+    pub fn set_lightness(&mut self, l: f32) {
+        self.lightness = valid_range(l, "lightness", 0.0, 1.0);
+    }
+    pub fn set_alpha(&mut self, a: f32) {
+        self.alpha = valid_range(a, "alpha", 0.0, 1.0);
+    }
+    pub fn offset_saturation(&mut self, offset: f32) {
+        self.saturation = offset_range(self.saturation, offset, "saturation", 0.0, 1.0);
+    }
+    pub fn offset_lightness(&mut self, offset: f32) {
+        self.lightness = offset_range(self.lightness, offset, "lightness", 0.0, 1.0);
+    }
+    pub fn offset_hue(&mut self, offset: f32) {
+        assert!(offset.is_finite(), "Hue offset must be a valid number");
+        let v = (self.hue + offset) % 360.0;
+        if v < 0.0 {
+            self.hue = 360.0 + v;
+        } else {
+            self.hue = v;
+        }
+    }
     pub fn hsla(&self) -> [f32; 4] {
         [self.hue, self.saturation, self.lightness, self.alpha]
     }

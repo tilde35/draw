@@ -32,3 +32,17 @@ pub(crate) fn valid_range(v: f32, name: &str, min: f32, max: f32) -> f32 {
         )
     }
 }
+
+pub(crate) fn offset_range(v: f32, offset: f32, name: &str, min: f32, max: f32) -> f32 {
+    if !offset.is_finite() {
+        panic!("Value must a valid number for {}", name);
+    }
+    let result = v + offset;
+    if result <= min {
+        min
+    } else if result >= max {
+        max
+    } else {
+        result
+    }
+}
