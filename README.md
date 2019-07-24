@@ -133,6 +133,23 @@ let img_tx_array = {
 };
 ```
 
+## NSVG ##
+
+```rust
+// Dependency:
+// nsvg = { version = "0.5.0", default-features = false }
+fn create_ico(c: Rgba) -> Image {
+    let s = include_str!("star.svg");
+    let s = s.replace(
+        "#00ff00",
+        &format!("#{:02x}{:02x}{:02x}", c.red(), c.green(), c.blue()),
+    );
+    let svg = nsvg::parse_str(&s, nsvg::Units::Pixel, 96.0).unwrap();
+    let (width, height, raw_rgba) = svg.rasterize_to_raw_rgba(1.0).unwrap();
+    Image::from_raw_rgba_bytes([width, height], &raw_rgba)
+}
+```
+
 ## Fonts ##
 
 ```rust
