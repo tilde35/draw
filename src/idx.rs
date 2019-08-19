@@ -13,7 +13,7 @@ pub trait Indexable2D {
         }
     }
     fn out_of_bounds_text(&self, img: &Image) -> String;
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]>;
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]>;
 }
 
 impl Indexable2D for usize {
@@ -32,7 +32,7 @@ impl Indexable2D for usize {
             img.buffer().len()
         )
     }
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]> {
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]> {
         if let Some(idx) = self.try_as_index(img) {
             let stride = img.stride();
             let x = idx % stride;
@@ -60,7 +60,7 @@ impl Indexable2D for isize {
             img.buffer().len()
         )
     }
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]> {
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]> {
         if let Some(idx) = self.try_as_index(img) {
             let stride = img.stride();
             let x = idx % stride;
@@ -89,7 +89,7 @@ impl Indexable2D for [i32; 2] {
             img.dim()
         )
     }
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]> {
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]> {
         if self.is_valid(img) {
             Some([self[0] as u32, self[1] as u32])
         } else {
@@ -114,7 +114,7 @@ impl Indexable2D for (i32, i32) {
             img.dim()
         )
     }
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]> {
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]> {
         if self.is_valid(img) {
             Some([self.0 as u32, self.1 as u32])
         } else {
@@ -140,7 +140,7 @@ impl Indexable2D for [u32; 2] {
             img.dim()
         )
     }
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]> {
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]> {
         if self.is_valid(img) {
             Some(*self)
         } else {
@@ -165,7 +165,7 @@ impl Indexable2D for (u32, u32) {
             img.dim()
         )
     }
-    fn try_as_xy_loc(&self, img: &Image) -> Option<[u32; 2]> {
+    fn try_as_xy_pos(&self, img: &Image) -> Option<[u32; 2]> {
         if self.is_valid(img) {
             Some([self.0, self.1])
         } else {

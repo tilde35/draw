@@ -5,7 +5,7 @@ use std::fmt;
 /// rectangle is considered empty/non-existant.
 #[derive(Clone, Copy, Eq, PartialEq, Default, Hash)]
 pub struct Rect {
-    pub loc: [i32; 2],
+    pub pos: [i32; 2],
     pub dim: [u32; 2],
 }
 impl fmt::Debug for Rect {
@@ -13,22 +13,22 @@ impl fmt::Debug for Rect {
         write!(
             f,
             "Rect[{:?} {:?}x{:?}]",
-            (self.loc[0], self.loc[1]),
+            (self.pos[0], self.pos[1]),
             self.dim[0],
             self.dim[1]
         )
     }
 }
 impl Rect {
-    pub fn new(loc: [i32; 2], dim: [u32; 2]) -> Self {
-        Self { loc, dim }
+    pub fn new(pos: [i32; 2], dim: [u32; 2]) -> Self {
+        Self { pos, dim }
     }
 
     pub fn x(&self) -> i32 {
-        self.loc[0]
+        self.pos[0]
     }
     pub fn y(&self) -> i32 {
-        self.loc[1]
+        self.pos[1]
     }
     pub fn width(&self) -> u32 {
         self.dim[0]
@@ -40,14 +40,14 @@ impl Rect {
         [self.dim[0] as i32, self.dim[1] as i32]
     }
 
-    pub fn end_loc(&self) -> [i32; 2] {
+    pub fn end_pos(&self) -> [i32; 2] {
         [self.end_x(), self.end_y()]
     }
     pub fn end_x(&self) -> i32 {
-        self.loc[0] + (self.dim[0] as i32)
+        self.pos[0] + (self.dim[0] as i32)
     }
     pub fn end_y(&self) -> i32 {
-        self.loc[1] + (self.dim[1] as i32)
+        self.pos[1] + (self.dim[1] as i32)
     }
 
     /// Returns true if either the X or the Y dimensions are zero.
@@ -57,11 +57,11 @@ impl Rect {
 
     // Returns true if the specified point is contained in the rectangle. Note: An empty rectange will always return false.
     pub fn contains(&self, pt: [i32; 2]) -> bool {
-        if pt[0] < self.loc[0] || pt[1] < self.loc[1] {
+        if pt[0] < self.pos[0] || pt[1] < self.pos[1] {
             false
         } else {
-            if pt[0] >= self.loc[0] + (self.dim[0] as i32)
-                || pt[1] >= self.loc[1] + (self.dim[1] as i32)
+            if pt[0] >= self.pos[0] + (self.dim[0] as i32)
+                || pt[1] >= self.pos[1] + (self.dim[1] as i32)
             {
                 false
             } else {
@@ -71,38 +71,38 @@ impl Rect {
     }
 
     #[must_use]
-    pub fn with_loc(&self, loc: [i32; 2]) -> Self {
-        Self { loc, dim: self.dim }
+    pub fn with_pos(&self, pos: [i32; 2]) -> Self {
+        Self { pos, dim: self.dim }
     }
     #[must_use]
     pub fn with_dim(&self, dim: [u32; 2]) -> Self {
-        Self { loc: self.loc, dim }
+        Self { pos: self.pos, dim }
     }
     #[must_use]
     pub fn with_x(&self, x: i32) -> Self {
         Self {
-            loc: [x, self.loc[1]],
+            pos: [x, self.pos[1]],
             dim: self.dim,
         }
     }
     #[must_use]
     pub fn with_y(&self, y: i32) -> Self {
         Self {
-            loc: [self.loc[0], y],
+            pos: [self.pos[0], y],
             dim: self.dim,
         }
     }
     #[must_use]
     pub fn with_width(&self, width: u32) -> Self {
         Self {
-            loc: self.loc,
+            pos: self.pos,
             dim: [width, self.dim[1]],
         }
     }
     #[must_use]
     pub fn with_height(&self, height: u32) -> Self {
         Self {
-            loc: self.loc,
+            pos: self.pos,
             dim: [self.dim[0], height],
         }
     }
@@ -125,23 +125,23 @@ impl Rect {
         self.with_idim([d[0] + delta[0], d[1] + delta[1]])
     }
     #[must_use]
-    pub fn with_delta_loc(&self, delta: [i32; 2]) -> Self {
+    pub fn with_delta_pos(&self, delta: [i32; 2]) -> Self {
         Self {
-            loc: [self.loc[0] + delta[0], self.loc[1] + delta[1]],
+            pos: [self.pos[0] + delta[0], self.pos[1] + delta[1]],
             dim: self.dim,
         }
     }
     #[must_use]
     pub fn with_delta_x(&self, delta: i32) -> Self {
         Self {
-            loc: [self.loc[0] + delta, self.loc[1]],
+            pos: [self.pos[0] + delta, self.pos[1]],
             dim: self.dim,
         }
     }
     #[must_use]
     pub fn with_delta_y(&self, delta: i32) -> Self {
         Self {
-            loc: [self.loc[0], self.loc[1] + delta],
+            pos: [self.pos[0], self.pos[1] + delta],
             dim: self.dim,
         }
     }

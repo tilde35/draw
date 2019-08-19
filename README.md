@@ -68,7 +68,7 @@ c.fill(Rgba([80, 80, 80, 128]));
 if let Some(mut sc) = c.sub_canvas([-4, -8], [16, 16]) {
     // Note: Location and dimensions are adjusted based on
     // available space.
-    assert!(sc.loc() == [0, 0]);
+    assert!(sc.pos() == [0, 0]);
     assert!(sc.dim() == [12, 8]);
 
     let its_gone = sc.into_sub_canvas([40, 40], [8, 8]);

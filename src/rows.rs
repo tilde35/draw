@@ -10,8 +10,8 @@ pub struct RowsIter<'a> {
     max_idx: usize,
 }
 impl<'a> RowsIter<'a> {
-    pub fn new(img: &'a Image, loc: [u32; 2], dim: [u32; 2]) -> RowsIter<'a> {
-        let [x, y] = loc;
+    pub fn new(img: &'a Image, pos: [u32; 2], dim: [u32; 2]) -> RowsIter<'a> {
+        let [x, y] = pos;
         let [width, height] = dim;
         if x + width > img.width() {
             panic!(
@@ -35,7 +35,7 @@ impl<'a> RowsIter<'a> {
         RowsIter {
             buf: img.buffer(),
             cur_idx: idx0,
-            cur_pos: [loc[0] as i32, loc[1] as i32],
+            cur_pos: [pos[0] as i32, pos[1] as i32],
             width: width,
             stride: stride,
             max_idx: idx0 + (height as usize) * stride,
@@ -100,8 +100,8 @@ pub struct RowsMutIter<'a> {
     max_idx: usize,
 }
 impl<'a> RowsMutIter<'a> {
-    pub fn new(img: &'a mut Image, loc: [u32; 2], dim: [u32; 2]) -> RowsMutIter<'a> {
-        let [x, y] = loc;
+    pub fn new(img: &'a mut Image, pos: [u32; 2], dim: [u32; 2]) -> RowsMutIter<'a> {
+        let [x, y] = pos;
         let [width, height] = dim;
         if x + width > img.width() {
             panic!(
@@ -125,7 +125,7 @@ impl<'a> RowsMutIter<'a> {
         RowsMutIter {
             buf: img.buffer_mut(),
             cur_idx: idx0,
-            cur_pos: [loc[0] as i32, loc[1] as i32],
+            cur_pos: [pos[0] as i32, pos[1] as i32],
             width: width,
             stride: stride,
             max_idx: idx0 + (height as usize) * stride,

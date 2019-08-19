@@ -126,58 +126,58 @@ impl Image {
         std::mem::swap(&mut self.contents, &mut result);
     }
 
-    pub fn get(&self, loc: impl Indexable2D) -> Rgba {
-        let idx = loc.as_index(self);
+    pub fn get(&self, pos: impl Indexable2D) -> Rgba {
+        let idx = pos.as_index(self);
         self.contents[idx]
     }
-    pub fn get_mut<'a>(&'a mut self, loc: impl Indexable2D) -> &'a mut Rgba {
-        let idx = loc.as_index(self);
+    pub fn get_mut<'a>(&'a mut self, pos: impl Indexable2D) -> &'a mut Rgba {
+        let idx = pos.as_index(self);
         &mut self.contents[idx]
     }
-    pub fn set(&mut self, loc: impl Indexable2D, color: Rgba) {
-        let idx = loc.as_index(self);
+    pub fn set(&mut self, pos: impl Indexable2D, color: Rgba) {
+        let idx = pos.as_index(self);
         self.contents[idx] = color;
     }
-    pub fn blend(&mut self, loc: impl Indexable2D, color: Rgba) {
-        self.blend_using(ColorBlendTransparent, loc, color);
+    pub fn blend(&mut self, pos: impl Indexable2D, color: Rgba) {
+        self.blend_using(ColorBlendTransparent, pos, color);
     }
-    pub fn blend_using(&mut self, mode: impl ColorBlendMode, loc: impl Indexable2D, color: Rgba) {
-        let idx = self.index_at(loc);
+    pub fn blend_using(&mut self, mode: impl ColorBlendMode, pos: impl Indexable2D, color: Rgba) {
+        let idx = self.index_at(pos);
         let cc = mode.prepare_color(color);
         mode.blend_color(&mut self.contents[idx], &cc);
     }
-    pub fn try_get(&self, loc: impl Indexable2D) -> Option<Rgba> {
-        if let Some(idx) = loc.try_as_index(self) {
+    pub fn try_get(&self, pos: impl Indexable2D) -> Option<Rgba> {
+        if let Some(idx) = pos.try_as_index(self) {
             Some(self.contents[idx])
         } else {
             None
         }
     }
-    pub fn try_get_mut<'a>(&'a mut self, loc: impl Indexable2D) -> Option<&'a mut Rgba> {
-        if let Some(idx) = loc.try_as_index(self) {
+    pub fn try_get_mut<'a>(&'a mut self, pos: impl Indexable2D) -> Option<&'a mut Rgba> {
+        if let Some(idx) = pos.try_as_index(self) {
             Some(&mut self.contents[idx])
         } else {
             None
         }
     }
-    pub fn try_set(&mut self, loc: impl Indexable2D, color: Rgba) -> bool {
-        if let Some(idx) = loc.try_as_index(self) {
+    pub fn try_set(&mut self, pos: impl Indexable2D, color: Rgba) -> bool {
+        if let Some(idx) = pos.try_as_index(self) {
             self.contents[idx] = color;
             true
         } else {
             false
         }
     }
-    pub fn try_blend(&mut self, loc: impl Indexable2D, color: Rgba) -> bool {
-        self.try_blend_using(ColorBlendTransparent, loc, color)
+    pub fn try_blend(&mut self, pos: impl Indexable2D, color: Rgba) -> bool {
+        self.try_blend_using(ColorBlendTransparent, pos, color)
     }
     pub fn try_blend_using(
         &mut self,
         mode: impl ColorBlendMode,
-        loc: impl Indexable2D,
+        pos: impl Indexable2D,
         color: Rgba,
     ) -> bool {
-        if let Some(idx) = loc.try_as_index(self) {
+        if let Some(idx) = pos.try_as_index(self) {
             let cc = mode.prepare_color(color);
             mode.blend_color(&mut self.contents[idx], &cc);
             true
@@ -186,11 +186,11 @@ impl Image {
         }
     }
 
-    pub fn index_at(&self, loc: impl Indexable2D) -> usize {
-        loc.as_index(self)
+    pub fn index_at(&self, pos: impl Indexable2D) -> usize {
+        pos.as_index(self)
     }
-    pub fn try_index_at(&self, loc: impl Indexable2D) -> Option<usize> {
-        loc.try_as_index(self)
+    pub fn try_index_at(&self, pos: impl Indexable2D) -> Option<usize> {
+        pos.try_as_index(self)
     }
 
     pub fn set_height(&mut self, h: u32) {
@@ -214,7 +214,7 @@ impl Image {
         }
     }
 
-    pub fn sub_image(&self, loc: impl Indexable2D, dim: [u32; 2]) -> Image {
+    pub fn sub_image(&self, pos: impl Indexable2D, dim: [u32; 2]) -> Image {
         let [w, h] = dim;
         if w == 0 || h == 0 {
             panic!(
@@ -222,10 +222,10 @@ impl Image {
                 w, h
             );
         }
-        let [x, y] = if let Some(loc) = loc.try_as_xy_loc(self) {
-            loc
+        let [x, y] = if let Some(pos) = pos.try_as_xy_pos(self) {
+            pos
         } else {
-            panic!("{}", loc.out_of_bounds_text(self))
+            panic!("{}", pos.out_of_bounds_text(self))
         };
         let d = self.dim;
         if x + w > d[0] || y + h > d[1] {
@@ -237,7 +237,7 @@ impl Image {
 
         let mut buf = Vec::with_capacity((w as usize) * (h as usize));
 
-        let mut row_idx = loc.as_index(self);
+        let mut row_idx = pos.as_index(self);
         let stride = self.stride();
         for _ in 0..h {
             let mut idx = row_idx;
@@ -256,8 +256,8 @@ impl Image {
 
     pub fn sub_images_from(&self, params: &SubImageParams) -> Vec<Image> {
         let mut result = Vec::new();
-        for loc in params.iter_for_dimensions(self.dim()) {
-            result.push(self.sub_image(loc, params.size));
+        for pos in params.iter_for_dimensions(self.dim()) {
+            result.push(self.sub_image(pos, params.size));
         }
         result
     }
@@ -284,11 +284,11 @@ impl Image {
     pub fn rows<'a>(&'a self) -> RowsIter<'a> {
         RowsIter::new(self, [0, 0], self.dim)
     }
-    pub fn rows_at<'a>(&'a self, loc: impl Indexable2D, dim: [u32; 2]) -> RowsIter<'a> {
-        let [x, y] = if let Some(loc) = loc.try_as_xy_loc(self) {
-            loc
+    pub fn rows_at<'a>(&'a self, pos: impl Indexable2D, dim: [u32; 2]) -> RowsIter<'a> {
+        let [x, y] = if let Some(pos) = pos.try_as_xy_pos(self) {
+            pos
         } else {
-            panic!("{}", loc.out_of_bounds_text(self))
+            panic!("{}", pos.out_of_bounds_text(self))
         };
         RowsIter::new(self, [x, y], dim)
     }
@@ -347,21 +347,21 @@ impl Image {
         let mut next_set: Vec<[i32; 2]> = Vec::with_capacity(self.contents.len());
         for y in 0..(self.height() as i32) {
             for x in 0..(self.width() as i32) {
-                let loc = [x, y];
-                if self.get(loc).alpha() > alpha_threshold {
+                let pos = [x, y];
+                if self.get(pos).alpha() > alpha_threshold {
                     continue;
                 }
                 let mut has_neighbor = false;
-                for (_, dloc) in neighboors.iter().cloned() {
-                    let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
-                    if let Some(c) = self.try_get(nloc) {
+                for (_, dpos) in neighboors.iter().cloned() {
+                    let npos = [pos[0] + dpos[0], pos[1] + dpos[1]];
+                    if let Some(c) = self.try_get(npos) {
                         if c.alpha() > alpha_threshold {
                             has_neighbor = true;
                         }
                     }
                 }
                 if has_neighbor {
-                    to_visit.push(loc);
+                    to_visit.push(pos);
                 }
             }
         }
@@ -369,36 +369,36 @@ impl Image {
         // Step 2: For every transparent pixel: blend all visited/non-transparent pixel colors
         while to_visit.len() > 0 {
             // Update the next round of transparent pixels
-            for loc in to_visit.iter().cloned() {
+            for pos in to_visit.iter().cloned() {
                 // RGB + weight
                 let mut result = [0.0, 0.0, 0.0, 0.0f32];
                 // Get surrounding colors
-                for (weight, dloc) in neighboors.iter().cloned() {
-                    let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
-                    self.gfx_combine(alpha_threshold, &mut result, &visited, weight, nloc);
+                for (weight, dpos) in neighboors.iter().cloned() {
+                    let npos = [pos[0] + dpos[0], pos[1] + dpos[1]];
+                    self.gfx_combine(alpha_threshold, &mut result, &visited, weight, npos);
                 }
-                for (_, dloc) in neighboors.iter().cloned() {
-                    let nloc = [loc[0] + dloc[0], loc[1] + dloc[1]];
-                    if let Some(nidx) = self.try_index_at(nloc) {
+                for (_, dpos) in neighboors.iter().cloned() {
+                    let npos = [pos[0] + dpos[0], pos[1] + dpos[1]];
+                    if let Some(nidx) = self.try_index_at(npos) {
                         let c = self.contents[nidx];
                         if c.alpha() <= alpha_threshold {
-                            if !next_set.contains(&nloc)
-                                && !to_visit.contains(&nloc)
+                            if !next_set.contains(&npos)
+                                && !to_visit.contains(&npos)
                                 && !visited[nidx]
                             {
-                                next_set.push(nloc);
+                                next_set.push(npos);
                             }
                         }
                     }
                 }
 
                 result[3] = (alpha_result as f32) / 255.0;
-                *self.get_mut(loc) = Rgba::from_f32(result);
+                *self.get_mut(pos) = Rgba::from_f32(result);
             }
 
             // Mark everything as visited, move next_set into to_visit
-            for loc in to_visit.iter().cloned() {
-                if let Some(idx) = self.try_index_at(loc) {
+            for pos in to_visit.iter().cloned() {
+                if let Some(idx) = self.try_index_at(pos) {
                     visited[idx as usize] = true;
                 }
             }
@@ -412,9 +412,9 @@ impl Image {
         result: &mut [f32; 4],
         visited: &Vec<bool>,
         weight: f32,
-        loc: [i32; 2],
+        pos: [i32; 2],
     ) {
-        if let Some(idx) = self.try_index_at(loc) {
+        if let Some(idx) = self.try_index_at(pos) {
             let c = self.contents[idx];
             if visited[idx] || c.alpha() > alpha_threshold {
                 let total_weight = result[3] + weight;
