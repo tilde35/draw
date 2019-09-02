@@ -44,6 +44,13 @@ let prms = SubImageParams::size([16, 16])
 let sprites = img.sub_images_from(&prms);
 ```
 
+## Image - Resizing ##
+
+```rust
+let img = Image::open("sample.png")?;
+let icon = img.resize([16, 16], ResizeFilter::Nearest);
+```
+
 ## Color - Creation and Alternative Formats ##
 
 ```rust

@@ -8,6 +8,7 @@ mod idx;
 mod img;
 mod minmaxf32;
 mod rect;
+mod resize_filter;
 mod rgba;
 mod rows;
 mod sub_img_params;
@@ -34,6 +35,7 @@ pub use crate::hsv_color::Hsv;
 pub use crate::idx::Indexable2D;
 pub use crate::img::Image;
 pub use crate::rect::Rect;
+pub use crate::resize_filter::ResizeFilter;
 pub use crate::rgba::Rgba;
 pub use crate::rows::{RowsIter, RowsMutIter};
 pub use crate::sub_img_params::{

@@ -2,6 +2,7 @@ use crate::blend::{ColorBlendMode, ColorBlendTransparent};
 use crate::canvas::Canvas;
 use crate::errors::ImageLoadError;
 use crate::idx::Indexable2D;
+use crate::resize_filter::ResizeFilter;
 use crate::rgba::Rgba;
 use crate::rows::{RowsIter, RowsMutIter};
 use crate::sub_img_params::{SubImageBuilder, SubImageParams};
@@ -46,6 +47,11 @@ impl Image {
             dim: [width, height],
             contents: buf,
         }
+    }
+
+    pub fn resize(&self, new_dim: [u32; 2], filter: ResizeFilter) -> Image {
+        let img = self.to_piston_image();
+        image::imageops::resize(&img, new_dim[0], new_dim[1], filter.as_filter_type()).into()
     }
 
     pub fn from_raw_rgba_bytes(dim: [u32; 2], raw: &[u8]) -> Image {
