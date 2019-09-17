@@ -22,14 +22,14 @@ pub use crate::blend::{ColorBlendOpaque, ColorBlendOverwrite, ColorBlendTranspar
 pub use crate::blend::{ImageBlendOpaque, ImageBlendOverwrite, ImageBlendTransparent};
 pub use crate::canvas::Canvas;
 pub use crate::errors::{FontLoadError, ImageLoadError, RgbaParseError};
-pub use crate::font::chars::{RenderableCharacters, SliceCharIter};
-pub use crate::font::font_cache::FontCache;
-pub use crate::font::glyph::{Glyph, GlyphInstruction};
-pub use crate::font::glyph_builder::GlyphInstructionBuilder;
-pub use crate::font::rendered_text::{
-    NextLineReason, RenderedCharInstruction, RenderedChars, RenderedText, RenderedTextInstruction,
+pub use crate::font::align::{HorzAlign, ScriptPosition, VertAlign};
+pub use crate::font::glyph::{Glyph, GlyphInst};
+pub use crate::font::layout::{
+    LinkBoundingBox, LinkLayout, TextLayout, TextLayoutBuilder, TextLayoutCmd,
 };
-pub use crate::font::scaled_glyph_cache::ScaledFontCache;
+pub use crate::font::svg_font::SvgFont;
+pub use crate::font::ttf_font::TtfFont;
+pub use crate::font::{Font, FontCache, StaticFontCache};
 pub use crate::hsl_color::Hsl;
 pub use crate::hsv_color::Hsv;
 pub use crate::idx::Indexable2D;

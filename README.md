@@ -9,7 +9,7 @@ be added as a git dependency.
 
 ```toml
 [dependencies]
-draw = { git = "https://github.com/tilde35/draw", branch = "v1" }
+draw = { git = "https://github.com/tilde35/draw", branch = "v3" }
 ```
 
 ## Image - Creation and I/O ##
@@ -157,48 +157,17 @@ fn create_ico(c: Rgba) -> Image {
 }
 ```
 
-## Fonts ##
+## Font Loading ##
 
 ```rust
-let font = FontCache::from_static(include_bytes!("Arial.ttf")).unwrap();
-let font = FontCache::from_slice(bytes).unwrap();
-let font = FontCache::from_vec(bytes).unwrap();
-let font = FontCache::from_font(rusttype_font);
-let font = FontCache::open("Arial.ttf").unwrap();
+let font = FontCache::ttf_from_static(include_bytes!("Arial.ttf")).unwrap();
+let font = FontCache::ttf_from_vec(bytes).unwrap();
+let font = FontCache::ttf_from_file("Arial.ttf").unwrap();
 
-let font_size = 24.0;
-let line_height = font.line_advance_height(font_size);
-let r = font.render("Example", font_size, Some(200), None);
-let r = font.cache_only_render("Example", font_size, Some(200), None).unwrap();
-
-let width = r.get_total_width();
-let height = r.get_total_height();
-let (mut x, mut y) = (0, 0);
-for i in r.get_instructions() {
-    match *i {
-        RenderedTextInstruction::RenderGlyph(g) => {
-            g.render_xy(
-                x,
-                y,
-                self,
-                |s, x, y| if let Some(dst) = s.try_get_color_mut(x, y) {
-                    mode.blend_solid_color(dst, color_ctxt);
-                },
-                |s, x, y, alpha| if let Some(dst) = s.try_get_color_mut(x, y) {
-                    mode.blend_color(dst, color_ctxt, alpha);
-                },
-            );
-            x += g.advance_width;
-        },
-        RenderedTextInstruction::Kerning(dx) => {
-            x += dx;
-        }
-        RenderedTextInstruction::NextLine(dy, _reason) => {
-            x = 0;
-            y += dy as i32;
-        }
-    }
-}
+// Create a hashmap that relates a character to the SVG contents and scaling factor (between 0.0 and 1.0).
+let mut svg_data: HashMap<char, (String, f32)> = HashMap::new();
+svg_data.insert('*', (include_str!("star.svg").into(), 1.0));
+let svg_font = FontCache::svg_from_text(svg_data);
 ```
 
 ## Blend Modes ##

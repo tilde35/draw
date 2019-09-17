@@ -5,6 +5,7 @@ edition = "2018"
 authors = ["Tilde35 <github@granitewood.com>"]
 
 [dependencies]
-image = "0.21.2"
-rusttype = "0.7.7"
-unicode-normalization = "0.1.8"
+image = "0.22.2"
+nsvg = "0.5.1"
+rusttype = "0.8.0"
+# unicode-normalization = "0.1.8"

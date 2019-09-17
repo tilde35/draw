@@ -1,10 +1,8 @@
 use crate::blend::{
-    ColorAlphaBlendMode, ColorAlphaBlendTransparent, ColorBlendMode, ColorBlendOverwrite,
-    ColorBlendTransparent, ImageBlendMode, ImageBlendTransparent,
+    ColorBlendMode, ColorBlendOverwrite, ColorBlendTransparent, ImageBlendMode,
+    ImageBlendTransparent,
 };
-use crate::font::font_cache::FontCache;
-use crate::font::glyph::Glyph;
-use crate::font::rendered_text::{RenderedText, RenderedTextInstruction};
+use crate::font::Font;
 use crate::img::Image;
 use crate::rect::Rect;
 use crate::rgba::Rgba;
@@ -307,100 +305,13 @@ impl<'a> Canvas<'a> {
 
     pub fn draw_text(
         &mut self,
-        font_cache: &mut FontCache,
-        font_size: f32,
+        font: &mut Font,
+        font_size: u32,
         font_color: Rgba,
         txt: &str,
         pos: [i32; 2],
         width: Option<u32>,
-        indent: Option<u32>,
     ) {
-        self.draw_text_using(
-            ColorAlphaBlendTransparent,
-            font_cache,
-            font_size,
-            font_color,
-            txt,
-            pos,
-            width,
-            indent,
-        );
-    }
-
-    pub fn draw_text_using<Mode: ColorAlphaBlendMode>(
-        &mut self,
-        mode: Mode,
-        font_cache: &mut FontCache,
-        font_size: f32,
-        font_color: Rgba,
-        txt: &str,
-        pos: [i32; 2],
-        width: Option<u32>,
-        indent: Option<u32>,
-    ) {
-        let r = font_cache.render(txt, font_size, width, indent);
-        self.draw_rendered_text_using(mode, &r, font_color, pos, indent.unwrap_or(0));
-    }
-
-    pub fn draw_rendered_text(
-        &mut self,
-        r: &RenderedText,
-        font_color: Rgba,
-        pos: [i32; 2],
-        indent: u32,
-    ) {
-        self.draw_rendered_text_using(ColorAlphaBlendTransparent, r, font_color, pos, indent)
-    }
-
-    pub fn draw_rendered_text_using<Mode: ColorAlphaBlendMode>(
-        &mut self,
-        mode: Mode,
-        r: &RenderedText,
-        font_color: Rgba,
-        pos: [i32; 2],
-        indent: u32,
-    ) {
-        let cc = mode.prepare_color(font_color);
-        let mut cur_x = pos[0] + (indent as i32);
-        let mut cur_y = pos[1];
-        for i in r.get_instructions() {
-            match *i {
-                RenderedTextInstruction::RenderGlyph(ref g) => {
-                    self.draw_glyph_alpha_xy(mode, g, &cc, [cur_x, cur_y]);
-                    cur_x += g.advance_width;
-                }
-                RenderedTextInstruction::Kerning(dx) => {
-                    cur_x += dx;
-                }
-                RenderedTextInstruction::NextLine(dy, ..) => {
-                    cur_y += dy as i32;
-                    cur_x = pos[0];
-                }
-            }
-        }
-    }
-
-    fn draw_glyph_alpha_xy<Mode: ColorAlphaBlendMode>(
-        &mut self,
-        mode: Mode,
-        g: &Glyph,
-        color_ctxt: &Mode::ColorContext,
-        pos: [i32; 2],
-    ) {
-        g.render_xy(
-            pos[0],
-            pos[1],
-            self,
-            |s, x, y| {
-                if let Some(dst) = s.try_get_color_mut([x, y]) {
-                    mode.blend_solid_color(dst, color_ctxt);
-                }
-            },
-            |s, x, y, alpha| {
-                if let Some(dst) = s.try_get_color_mut([x, y]) {
-                    mode.blend_color(dst, color_ctxt, alpha);
-                }
-            },
-        );
+        font.render(font_size, font_color, txt, pos, width, self);
     }
 }

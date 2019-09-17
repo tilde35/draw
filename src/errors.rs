@@ -58,6 +58,7 @@ impl From<image::ImageError> for ImageLoadError {
 pub enum FontLoadError {
     IoError(std::io::Error),
     FontError(rusttype::Error),
+    SvgError(nsvg::Error),
 }
 impl From<std::io::Error> for FontLoadError {
     fn from(e: std::io::Error) -> Self {
@@ -69,11 +70,17 @@ impl From<rusttype::Error> for FontLoadError {
         FontLoadError::FontError(e)
     }
 }
+impl From<nsvg::Error> for FontLoadError {
+    fn from(e: nsvg::Error) -> Self {
+        FontLoadError::SvgError(e)
+    }
+}
 impl std::fmt::Display for FontLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             FontLoadError::IoError(e) => write!(f, "{}", e),
             FontLoadError::FontError(e) => write!(f, "{}", e),
+            FontLoadError::SvgError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -82,6 +89,7 @@ impl std::error::Error for FontLoadError {
         match self {
             FontLoadError::IoError(e) => Some(e),
             FontLoadError::FontError(e) => Some(e),
+            FontLoadError::SvgError(e) => Some(e),
         }
     }
 }
