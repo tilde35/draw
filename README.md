@@ -107,7 +107,9 @@ c.draw_rendered_text(&r, Rgba([0, 0, 0, 255]), [10, 10], 0);
 
 ```rust
 let img_tx = {
-    let img = Image::open("my_file.png").unwrap();
+    let mut img = Image::open("my_file.png").unwrap();
+    // Flip in y-direction, adjust alpha transparency color
+    img.transform_for_3dgfx();
 
     let raw = glium::texture::RawImage2d {
         data: std::borrow::Cow::Borrowed(img.raw_rgba_bytes()),
@@ -121,9 +123,10 @@ let img_tx = {
 let img_tx_array = {
     let img = Image::open("my_file.png").unwrap();
 
-    let p = SubImageParams::size([128, 128]).with_margin(1, 1, 1, 1).with_spacing(1, 1);
-
-    let sub_imgs = img.sub_images(&p);
+    let sub_imgs = img.sub_images([128, 128])
+        .with_margin(1)
+        .with_spacing(1)
+        .with_transform_for_3dgfx();
 
     let mut raw_entries = Vec::new();
     for i in sub_imgs.iter() {

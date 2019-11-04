@@ -263,7 +263,11 @@ impl Image {
     pub fn sub_images_from(&self, params: &SubImageParams) -> Vec<Image> {
         let mut result = Vec::new();
         for pos in params.iter_for_dimensions(self.dim()) {
-            result.push(self.sub_image(pos, params.size));
+            let mut img = self.sub_image(pos, params.size);
+            if params.transform_for_3dgfx {
+                img.transform_for_3dgfx();
+            }
+            result.push(img);
         }
         result
     }
@@ -325,6 +329,11 @@ impl Image {
             let rgba_slice = &self.contents[0] as *const _ as *const u8;
             std::slice::from_raw_parts(rgba_slice, u8_len)
         }
+    }
+
+    pub fn transform_for_3dgfx(&mut self) {
+        self.create_alpha_color_for_3dgfx();
+        self.flip_y();
     }
 
     pub fn create_alpha_color_for_3dgfx(&mut self) {

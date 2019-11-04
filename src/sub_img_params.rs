@@ -49,6 +49,10 @@ impl<'a> SubImageBuilder<'a> {
         self.params.spacing_horz = space[1];
         self
     }
+    pub fn with_transform_for_3dgfx(mut self) -> Self {
+        self.params.transform_for_3dgfx = true;
+        self
+    }
     pub fn create(self) -> Vec<Image> {
         self.img.sub_images_from(&self.params)
     }
@@ -63,6 +67,7 @@ pub struct SubImageParams {
     pub margin_bottom: u32,
     pub spacing_horz: u32,
     pub spacing_vert: u32,
+    pub transform_for_3dgfx: bool,
 }
 
 impl SubImageParams {
