@@ -1,6 +1,9 @@
 use std::cmp::max;
 use std::fmt;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 /// Rect struct represents a rectangle. Note, that if either of the dimensions are zero, then the
 /// rectangle is considered empty/non-existant.
 #[derive(Clone, Copy, Eq, PartialEq, Default, Hash)]

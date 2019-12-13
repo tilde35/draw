@@ -1,7 +1,10 @@
 use crate::errors::RgbaParseError;
 use crate::hsl_color::Hsl;
 use crate::hsv_color::Hsv;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Rgba(pub [u8; 4]);
 

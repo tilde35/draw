@@ -1,6 +1,9 @@
 use crate::minmaxf32::*;
 use crate::rgba::Rgba;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Hsl {
     hue: f32,        // 0 to 360

@@ -1,4 +1,6 @@
 use crate::img::Image;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 pub struct SubImageBuilder<'a> {
     img: &'a Image,
@@ -58,6 +60,7 @@ impl<'a> SubImageBuilder<'a> {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Default, Clone, Debug)]
 pub struct SubImageParams {
     pub size: [u32; 2],

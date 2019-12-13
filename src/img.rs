@@ -6,7 +6,10 @@ use crate::resize_filter::ResizeFilter;
 use crate::rgba::Rgba;
 use crate::rows::{RowsIter, RowsMutIter};
 use crate::sub_img_params::{SubImageBuilder, SubImageParams};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Image {
     dim: [u32; 2],
