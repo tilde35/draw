@@ -126,7 +126,8 @@ let img_tx_array = {
     let sub_imgs = img.sub_images([128, 128])
         .with_margin(1)
         .with_spacing(1)
-        .with_transform_for_3dgfx();
+        .with_transform_for_3dgfx()
+        .create();
 
     let mut raw_entries = Vec::new();
     for i in sub_imgs.iter() {
