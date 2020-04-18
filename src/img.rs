@@ -135,6 +135,18 @@ impl Image {
         std::mem::swap(&mut self.contents, &mut result);
     }
 
+    pub fn flip_x(&mut self) {
+        // TODO Implement this efficiently
+        let mut result = Vec::with_capacity(self.contents.len());
+        for y in 0..self.dim[1] {
+            for x in 0..self.dim[0] {
+                let flip_x = self.dim[0] - x - 1;
+                result.push(self.get([flip_x, y]));
+            }
+        }
+        std::mem::swap(&mut self.contents, &mut result);
+    }
+
     pub fn get(&self, pos: impl Indexable2D) -> Rgba {
         let idx = pos.as_index(self);
         self.contents[idx]
