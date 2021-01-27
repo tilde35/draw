@@ -6,6 +6,7 @@ use crate::resize_filter::ResizeFilter;
 use crate::rgba::Rgba;
 use crate::rows::{RowsIter, RowsMutIter};
 use crate::sub_img_params::{SubImageBuilder, SubImageParams};
+use image::ImageError;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -85,11 +86,11 @@ impl Image {
     }
 
     pub fn open(file: impl AsRef<std::path::Path>) -> Result<Image, ImageLoadError> {
-        Ok(image::open(file)?.to_rgba().into())
+        Ok(image::open(file)?.to_rgba8().into())
     }
 
     pub fn open_bytes(buffer: &[u8]) -> Result<Image, ImageLoadError> {
-        Ok(image::load_from_memory(buffer)?.to_rgba().into())
+        Ok(image::load_from_memory(buffer)?.to_rgba8().into())
     }
 
     /// Converts this image into linear color space (ex. what OpenGL uses). Since this is
@@ -302,7 +303,7 @@ impl Image {
         imgbuf
     }
 
-    pub fn save(&self, file: impl AsRef<std::path::Path>) -> Result<(), std::io::Error> {
+    pub fn save(&self, file: impl AsRef<std::path::Path>) -> Result<(), ImageError> {
         self.to_piston_image().save(file)
     }
 
